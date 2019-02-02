@@ -3,15 +3,25 @@ import sys
 import numpy as np
 import logging
 import scipy.optimize
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pyccl as ccl
 import argparse
+import os
 
 import sacc
 from desclss import LSSTheory,LSSLikelihood
 
 import emcee as mc
 from ParamVec import ParamVec
+
+HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_alpha', 'sigm_0', 'sigm_alpha', 'm0_0', 'm0_alpha', 'm1_0', 'm1_alpha', \
+                  'alpha_0', 'alpha_alpha', 'fc_0', 'fc_alpha']
+HOD_PARAM_MINS = np.array([9., -1., 0., -1., 10**6.5, -1., 10**11.5, -1., 0., -1., 0., -2.])
+HOD_PARAM_MAXS = np.array([15., 1., 0.8, 1., 10**13., 1., 10**17., 1., 2., 1., 1., 0.])
+
+DEFAULTLIKEEXC = -1e9
 
 class HSCAnalyze:
 
@@ -27,7 +37,12 @@ class HSCAnalyze:
                  pzshifts=[0,0,0,0],
                  join_saccs=True,   ## If true, Cinverse add all saccs into one
                  cull_cross=True,  ## If true, use just auto
-                 log=logging.DEBUG):
+                 log=logging.DEBUG,
+                 hod=0,
+                 fitHOD=0,
+                 hodpars=None):
+
+        assert join_saccs, 'Shot noise currently only supports coadded saccs.'
 
         if type(log)==logging.Logger:
             self.log=log
@@ -39,40 +54,73 @@ class HSCAnalyze:
             formatter = logging.Formatter('%(levelname)s: %(message)s')
             ch.setFormatter(formatter)
             self.log.addHandler(ch)
+            self.log.propagate = False
 
         self.log.info('Called hsc_driver with saccfiles = {}.'.format(fnames))
         self.saccs=[sacc.SACC.loadFromHDF(fn) for fn in fnames]
         self.log.info ("Loaded %i sacc files."%len(self.saccs))
 
+        # Determine noise from noise saccs
+        if noise is None:
+            self.log.info('No shot noise parameter provided. Determining from noise sacc.')
+
+            fnames_saccs_noise = [os.path.splitext(fn)[0]+'_noise.sacc' for fn in fnames]
+            self.log.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
+            try:
+                self.saccs_noise = [sacc.SACC.loadFromHDF(fn) for fn in fnames_saccs_noise]
+                self.log.info ("Loaded %i noise sacc files."%len(self.saccs))
+            except IOError:
+                raise IOError("Noise = {}, need to provide noise saccs.".format(noise))
+
+            # Add precision matrix to noise saccs
+            for i, s in enumerate(self.saccs):
+                self.saccs_noise[i].precision = s.precision
+
+            if join_saccs:
+                self.saccs_noise = [sacc.coadd(self.saccs_noise, mode='area')]
+            if cull_cross:
+                for s in self.saccs_noise:
+                    s.cullCross()
+
+        else:
+            self.saccs_noise = None
+
         if join_saccs:
-            self.saccs=[sacc.coadd(self.saccs)]
+            self.saccs=[sacc.coadd(self.saccs, mode='area')]
         if cull_cross:
             for s in self.saccs:
                 s.cullCross()
-    
-            
+
         self.Ntomo=len(self.saccs[0].tracers) ## number of tomo bins
         self.log.info ("Ntomo bins: %i"%self.Ntomo)
+
+        self.fixnames()
+        self.cutLranges(lmin, lmax, kmax, zeff, cosmo)
 
         if not (type(noise)==list):
             if noise is not None:
                 self.log.info('Scalar shot noise parameter provided. Setting constant for all tomographic bins.')
                 noise=[noise]*self.Ntomo
             else:
-                self.log.info('No shot noise parameter provided. Determining from sacc.')
-                noise = [(1./np.mean(t.extra_cols['ndens']))*1e8 for t in self.saccs[0].tracers]
-                self.log.info('Shot noise array = {}.'.format(noise))
+                noise = [0 for i in range(self.Ntomo*len(self.saccs_noise))]
+                for s in self.saccs_noise:
+                    for i in range(self.Ntomo):
+                        binmask = (s.binning.binar['T1']==i)&(s.binning.binar['T2']==i)
+                        noise[i] = s.mean.vector[binmask]*1e8
+
+                # noise = [(1./np.mean(t.extra_cols['ndens']))*1e8 for t in self.saccs[0].tracers]
         else:
             noise = noise
+
+        self.log.info('Shot noise array = {}.'.format(noise))
 
         assert len(noise) == len(self.saccs)*self.Ntomo, 'Noise list shape does not match total number of tracers.'
         assert len(pzshifts) == self.Ntomo, 'pzshifts array shape does not match number of tomographic bins.'
 
-        self.fixnames()
-        self.cutLranges(lmin, lmax, kmax, zeff, cosmo)
-        self.setParametes(fitOc,Oc,fits8,s8,fith0,h0,fitBias,BiasMod,zbias,bias,fitNoise,noise,fitPZShifts,pzshifts)
+        self.setParametes(fitOc,Oc,fits8,s8,fith0,h0,fitBias,BiasMod,zbias,bias,fitNoise,noise,fitPZShifts,pzshifts, \
+                          hod, fitHOD, hodpars)
             
-        self.lts=[LSSTheory(s) for s in self.saccs]
+        self.lts=[LSSTheory(s, hod=hod, fitHOD=fitHOD, hodpars=hodpars) for s in self.saccs]
         self.lks=[LSSLikelihood(s) for s in self.saccs]
 
         self.dofs = self.ncls - len(self.P)
@@ -127,9 +175,16 @@ class HSCAnalyze:
         self.log.info('lmin = {}, lmax = {}.'.format(self.lmin, self.lmax))
 
         self.ncls = 0
-        for s in self.saccs:
-            s.cullLminLmax(self.lmin,self.lmax)
-            self.ncls += s.mean.vector.shape[0]
+        if self.saccs_noise is None:
+            for s in self.saccs:
+                s.cullLminLmax(self.lmin,self.lmax)
+                self.ncls += s.mean.vector.shape[0]
+        # If saccs_noise is not None, also cull those
+        else:
+            for i, s in enumerate(self.saccs):
+                s.cullLminLmax(self.lmin,self.lmax)
+                self.saccs_noise[i].cullLminLmax(self.lmin,self.lmax)
+                self.ncls += s.mean.vector.shape[0]
 
         self.log.info('ncls = {}.'.format(self.ncls))
 
@@ -152,7 +207,8 @@ class HSCAnalyze:
 
         return lmax
 
-    def setParametes(self,fitOc,Oc,fits8,s8,fith0,h0,fitBias,BiasMod,zbias,bias,fitNoise,noise,fitPZShifts,pzshifts):
+    def setParametes(self,fitOc,Oc,fits8,s8,fith0,h0,fitBias,BiasMod,zbias,bias,fitNoise,noise,fitPZShifts,pzshifts, hod, \
+                     fitHOD, hodpars):
         #### set up parameters
         self.fitOc=fitOc
         self.Oc=Oc
@@ -168,6 +224,14 @@ class HSCAnalyze:
         self.noise=noise
         self.fitPZShifts=fitPZShifts
         self.pzshifts=pzshifts
+        # HOD
+        self.hod = hod
+        self.fitHOD = fitHOD
+        if self.hod == 1:
+            self.log.info('hod = {}. Computing theory predictions with HOD.'.format(self.hod))
+            self.hodpars = {}
+            for i, key in enumerate(HOD_PARAM_KEYS):
+                self.hodpars[key] = hodpars[i]
             
         self.P=ParamVec()
         if self.fitOc:
@@ -185,7 +249,7 @@ class HSCAnalyze:
                 for i, b in enumerate(self.bias):
                     self.P.addParam('b_bin%i'%i, b, min=0.5, max=5.)
             else:
-                raise ValueError("Intial value for bias needed.")
+                raise ValueError("Initial value for bias needed.")
 
         if self.fitNoise:
             for i in range(self.Ntomo):
@@ -194,10 +258,14 @@ class HSCAnalyze:
         if self.fitPZShifts:
             for i in range(self.Ntomo):
                 self.P.addParam('s_%i'%i,0.0,min=-0.5,max=+0.5)
-        self.log.info ("Parameters: "+str(self.P._names))
             
+        if self.fitHOD == 1:
+            self.log.info('Fitting HOD parameters.')
+            for i, key in enumerate(HOD_PARAM_KEYS):
+                self.P.addParam('{}'.format(key), hodpars[i], min=HOD_PARAM_MINS[i], max=HOD_PARAM_MAXS[i])
 
-    
+        self.log.info ("Parameters: "+str(self.P._names))
+
 
     def predictTheory(self,p):
         P=self.P.clone()
@@ -213,7 +281,7 @@ class HSCAnalyze:
          'h0':h0,
          'n_s':0.96,
          'sigma_8':s8,
-         'transfer_function':'eisenstein_hu',
+         'transfer_function':'boltzmann_class',
          'matter_power_spectrum':'halofit',
          'has_rsd':False,'has_magnification':None}
 
@@ -239,6 +307,14 @@ class HSCAnalyze:
         if self.fitPZShifts:
             for i in range(self.Ntomo):
                 dic['zshift_bin%i'%i]=P.value('s_%i'%i)
+
+        if self.hod == 1:
+            if self.fitHOD == 1:
+                for i, key in enumerate(HOD_PARAM_KEYS):
+                    dic['{}'.format(key)]= P.value('{}'.format(key))
+            else:
+                for i, key in enumerate(HOD_PARAM_KEYS):
+                    dic['{}'.format(key)]= self.hodpars['{}'.format(key)]
 
         cls=[0 for lt in self.lts]
 
@@ -266,7 +342,7 @@ class HSCAnalyze:
          'h0':h0,
          'n_s':0.96,
          'sigma_8':s8,
-         'transfer_function':'eisenstein_hu',
+         'transfer_function':'boltzmann_class',
          'matter_power_spectrum':'halofit',
          'has_rsd':False,'has_magnification':None}
 
@@ -293,18 +369,33 @@ class HSCAnalyze:
             for i in range(self.Ntomo):
                 dic['zshift_bin%i'%i]=P.value('s_%i'%i)
 
+        if self.hod == 1:
+            if self.fitHOD == 1:
+                for i, key in enumerate(HOD_PARAM_KEYS):
+                    dic['{}'.format(key)]= P.value('{}'.format(key))
+            else:
+                for i, key in enumerate(HOD_PARAM_KEYS):
+                    dic['{}'.format(key)]= self.hodpars['{}'.format(key)]
+
         cls=[lt.get_noSN_prediction(dic) for lt in self.lts]
 
         return cls
     
     #Define log(p). This is just a wrapper around the LSSLikelihood lk
     def logprobs(self,p):
-        cls=self.predictTheory(p)
-        #print (cls)
-        likes=np.array([lk(cl) for lk,cl in zip(self.lks,cls)])
-        # dof = np.array([len(cl) for cl in cls])
+
+        try:
+            cls=self.predictTheory(p)
+            #print (cls)
+            likes=np.array([lk(cl) for lk,cl in zip(self.lks,cls)])
+            # dof = np.array([len(cl) for cl in cls])
+        except:
+            self.log.warning("Caught error from CCL. Setting likelihoods to DEFAULTLIKEEXC.")
+            likes = DEFAULTLIKEEXC*np.ones(len(self.lks))
+
         self.chisq_cur = -2*likes.sum()
         self.log.debug("parameters: "+str(p)+" -> chi2= "+str(self.chisq_cur)+" dof = ncls - nparam: "+str(self.dofs))
+
         return likes
 
     def logprob(self,p):
@@ -356,9 +447,6 @@ class HSCAnalyze:
         passng 'cross', and both by passing 'all'.  The C_ell's will be
         weighted by a factor of ell^{weightpow}.
         """
-        import matplotlib.pyplot as plt
-        import matplotlib
-
 
         if subplot is None:
             fig = plt.figure()
@@ -509,51 +597,96 @@ class HSCAnalyze:
 
 if __name__=="__main__":
 
-    parser = argparse.ArgumentParser(description='Calculate cls for ACT HSC.')
+    parser = argparse.ArgumentParser(description='Calculate HSC clustering cls.')
 
     parser.add_argument('--path2fig', dest='path2fig', type=str, help='Path to figure.', required=False)
-    parser.add_argument('--BiasMod', dest='BiasMod', type=str, help='Tag denoting which bias model to us. BiasMod = {bz, const}.', required=False, default='bz')
+    parser.add_argument('--fitBias', dest='fitBias', type=int, help='Tag denoting if to fit for bias parameters.', required=False, default=1)
+    parser.add_argument('--BiasMod', dest='BiasMod', type=str, help='Tag denoting which bias model to use. BiasMod = {bz, const}.', required=False, default='bz')
     parser.add_argument('--fitNoise', dest='fitNoise', type=int, help='Tag denoting if to fit shot noise.', required=False, default=1)
+    parser.add_argument('--noiseValue', dest='noiseValue', type=float, help='Constant shot noise value for all bins [in units of 1e-8].', required=False, default=0.75)
+    parser.add_argument('--noiseFromData', dest='noiseFromData', type=int, help='Tag denoting if to determine the shot noise from data.', required=False, default=0)
     parser.add_argument('--lmin', dest='lmin', type=str, help='Tag specifying how lmin is determined. lmin = {auto, kmax}.', required=False, default='auto')
     parser.add_argument('--lmax', dest='lmax', type=str, help='Tag specifying how lmax is determined. lmax = {auto, kmax}.', required=False, default='auto')
     parser.add_argument('--kmax', dest='kmax', type=float, help='If lmax=kmax, this sets kmax to use.', required=False)
     parser.add_argument('--fitdata', dest='fitdata', type=int, help='Tag denoting if parameters are fit to data or only a plot is generated.', required=True)
+    parser.add_argument('--hod', dest='hod', type=int, help='Tag denoting if to use HOD in theory predictions.', required=False, default=0)
+    parser.add_argument('--fitHOD', dest='fitHOD', type=int, help='Tag denoting if to fit for HOD parameters.', required=False, default=0)
     parser.add_argument('--saccfiles', dest='saccfiles', nargs='+', help='Path to saccfiles.', required=True)
 
     args = parser.parse_args()
+
+    output_filename, _ = os.path.splitext(args.path2fig)
+
+    # Setup logging to file and stderr
+    logger = logging.getLogger('main')
+    logger.setLevel(logging.INFO)
+    consoleHandler = logging.StreamHandler()
+    fileHandler = logging.FileHandler(output_filename+'.txt')
+    consoleHandler.setLevel(logging.INFO)
+    fileHandler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    consoleHandler.setFormatter(formatter)
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(consoleHandler)
+    logger.addHandler(fileHandler)
+    logger.propagate = False
 
     if args.lmax == 'kmax':
         zeff = np.array([0.57, 0.70, 0.92, 1.25])
     else:
         zeff = None
 
-    if args.BiasMod == 'bz':
-        bias = np.array([0.7, 1.5, 1.8, 2.0, 2.5])
-    elif args.BiasMod == 'const':
-        bias = np.array([0.7, 1.5, 1.8, 2.0])
+    if args.fitBias == 1:
+        logger.info('Fitting galaxy bias.')
+        if args.BiasMod == 'bz':
+            bias = np.array([0.7, 1.5, 1.8, 2.0, 2.5])
+        elif args.BiasMod == 'const':
+            bias = np.array([0.7, 1.5, 1.8, 2.0])
+            # bias = np.array([1., 1., 1., 1.])
+        else:
+            raise NotImplementedError('Only BiasMod = bz or const implemented.')
     else:
-        raise NotImplementedError('Only BiasMod = bz or const implemented.')
+        logger.info('Not fitting galaxy bias.')
+        logger.info('Setting bias to 1 for all samples.')
+        args.BiasMod = 'const'
+        bias = np.ones(4)
+
+    if args.hod == 1:
+        # Fiducial starting parameters loosely informed from Coupon et al., 2012
+        # arXiv: 1107.0616
+        # Table B1
+        hodpars = np.array([10., 0., 0.35, 0.3, 10**7.5, 0.7, 10**13., 0.1, 1., 0.3, 0.25, -1.5])
+        # hodpars = np.array([10., 0., 0.31, 0., 1e12, 0.3, 3.5e12, 0.2, 0.8, 0.3, 1., -0.1])
+    else:
+        hodpars=None
 
     if args.fitdata == 0:
-
-        h = HSCAnalyze(args.saccfiles, Oc=0.3479673, bias=bias,
-                 fitNoise=args.fitNoise, noise=None, BiasMod=args.BiasMod)
+        bias = np.array([0.9615482,  1.16666415, 1.34743442, 1.50652355])
+        h = HSCAnalyze(args.saccfiles, Oc=0.258, bias=bias,
+                 fitNoise=args.fitNoise, noise=None, fitBias=bool(args.fitBias), BiasMod=args.BiasMod)
 
         h.plotDataTheory(path2fig=args.path2fig)
         # h.plotDataTheory()
 
     else:
 
-        h = HSCAnalyze(args.saccfiles, lmax=args.lmax, lmin=args.lmin, kmax=args.kmax, cosmo=None, BiasMod=args.BiasMod,
-                       bias=bias, zeff=zeff, fitNoise=args.fitNoise)
+        if args.fitNoise == 0 and args.noiseFromData == 1:
+            h = HSCAnalyze(args.saccfiles, lmax=args.lmax, lmin=args.lmin, kmax=args.kmax, cosmo=None, BiasMod=args.BiasMod,
+                           bias=bias, zeff=zeff, fitNoise=args.fitNoise, noise=None, hod=args.hod, fitHOD=args.fitHOD,
+                           hodpars=hodpars, fitBias=bool(args.fitBias))
+        else:
+            h = HSCAnalyze(args.saccfiles, lmax=args.lmax, lmin=args.lmin, kmax=args.kmax, cosmo=None, BiasMod=args.BiasMod,
+                           bias=bias, zeff=zeff, fitNoise=args.fitNoise, hod=args.hod, fitHOD=args.fitHOD, hodpars=hodpars,
+                           noise=args.noiseValue, fitBias=bool(args.fitBias))
         # h=HSCAnalyze(sys.argv[1:], lmax='kmax', lmin='kmax', kmax=0.15, cosmo=None, \
         #              zeff=np.array([0.57, 0.70, 0.92, 1.25]), fitNoise=False, noise=None)
         # h=HSCAnalyze(sys.argv[1:], BiasMod='const', bias=[0.7,1.5,1.8,2.0], fitNoise=False, noise=None)
         # h=HSCAnalyze(sys.argv[1:])
         res = h.minimize()
-        h.log.info('Optimizer message {}.'.format(res.message))
-        h.log.info('Minimum found at {}.'.format(res.x))
-        h.log.info('No of iterations {}.'.format(res.nit))
+        logger.info('Optimizer message {}.'.format(res.message))
+        logger.info('Minimum found at {}.'.format(res.x))
+        logger.info('Minimum chi2 = {}.'.format(h.chisq_cur))
+        logger.info('No of iterations {}.'.format(res.nit))
         h.plotDataTheory(params=res.x, path2fig=args.path2fig)
         # h.plotDataTheory(params=res.x, path2fig='/Users/Andrina/Documents/WORK/HSC-LSS/plots/spectra_eab_best_pzb4bins_bpw200_covdata_cont_dpt_dst_str_ams_fwh_ssk_ssc/cls_data-theory+SN-rem_mPk=halofit_n_sn=const_bz=const_Ntomo=4_kmax=0.15_test-fit.pdf')
         # h.plotDataTheory(params=res.x)

@@ -1,6 +1,8 @@
 import numpy as np
 import pyccl as ccl
 from hod import HODProfile
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
