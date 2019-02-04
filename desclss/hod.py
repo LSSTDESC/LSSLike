@@ -142,7 +142,6 @@ class HODProfile(object) :
         lmmin, lmmax, nlm : mass edges and sampling rate for mass integral.
         return_decomposed : if True, returns 1-halo, 2-halo, bias, shot noise and total (see below for order).
         """
-
         z = 1./a - 1.
         marr=np.logspace(lmmin,lmmax,nlm); dlm=np.log10(marr[1]/marr[0])
         u_s=self.u_sat(z,marr,k)
@@ -160,13 +159,16 @@ class HODProfile(object) :
 
         #Number density
         ng=np.sum(hmf*ngm)*dlm+n0_1h*ngm[0]
+        if ng<=1E-16 : #Make sure we won't divide by 0
+            return None
 
         #Bias
         b_hod=np.sum((hmf*hbf*ncm)[None,:]*(fc+nsm[None,:]*u_s[:,:]),axis=1)*dlm+n0_2h*ncm[0]*(fc+nsm[0]*u_s[:,0])
         b_hod/=ng
 
         #1-halo
-        p1h=np.sum((hmf*ncm**2)[None,:]*(fc+nsm[None,:]*u_s[:,:])**2,axis=1)*dlm+n0_1h*(ncm[0]*(fc+nsm[0]*u_s[:,0]))**2
+        #p1h=np.sum((hmf*ncm**2)[None,:]*(fc+nsm[None,:]*u_s[:,:])**2,axis=1)*dlm+n0_1h*(ncm[0]*(fc+nsm[0]*u_s[:,0]))**2
+        p1h=np.sum((hmf*ncm)[None,:]*(2*fc*nsm[None,:]*u_s[:,:]+(nsm[None,:]*u_s[:,:])**2),axis=1)*dlm+n0_1h*ncm[0]*(2*fc*nsm[0]*u_s[:,0]+(nsm[0]*u_s[:,0])**2)
         p1h/=ng**2
 
         #2-halo
@@ -176,4 +178,3 @@ class HODProfile(object) :
             return p1h+p2h,p1h,p2h,np.ones_like(k)/ng,b_hod
         else :
             return p1h+p2h
-        
