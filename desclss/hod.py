@@ -1,9 +1,6 @@
 import numpy as np
 import pyccl as ccl
 from scipy.special import erf,sici
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
-
 
 def concentration_duffy(halo_mass,a,is_Dmatter=False,is_D500=False) :
     """
@@ -72,8 +69,9 @@ class HODProfile(object) :
     """
     Implements an HOD profile as described in https://arxiv.org/abs/1601.05779 (Eqs. 22 and 23).
     """
-    def __init__(self,lmmin_f,sigm_f,fc_f,m0_f,m1_f,alpha_f,delta_mass=200.,is_delta_matter=True) :
+    def __init__(self,cosmo,lmmin_f,sigm_f,fc_f,m0_f,m1_f,alpha_f,delta_mass=200.,is_delta_matter=True) :
         """
+        cosmo : CCL cosmology object
         lmmin_f : function returning log10(M_min)(z)
         sigm_f : function returning sigma_lnM(z)
         fc_f : function returning f_central(z)
@@ -81,6 +79,8 @@ class HODProfile(object) :
         m1_f : function returning M_1(z)
         alpha_f : function returning alpha(z)
         """
+
+        self.cosmo = cosmo
         self.lmmin_f=lmmin_f
         self.sigm_f=sigm_f
         self.fc_f=fc_f
@@ -89,6 +89,7 @@ class HODProfile(object) :
         self.alpha_f=alpha_f
         self.delta_mass=delta_mass
         self.is_delta_matter=is_delta_matter
+        print('HODProfile called with {}.'.format(cosmo))
 
     def n_cent(self,z,m) :
         """
@@ -116,12 +117,12 @@ class HODProfile(object) :
         fc=self.fc_f(z)
         return self.n_cent(z,m)*(fc+self.n_sat(z,m))
 
-    def u_sat(self,cosmo,z,m,k) :
+    def u_sat(self,z,m,k) :
         """
         Satellite density profile
         """
         a=1./(1+z)
-        r200=r_Delta(cosmo,m,a,self.delta_mass,is_matter=self.is_delta_matter)*(1+z)
+        r200=r_Delta(self.cosmo,m,a,self.delta_mass,is_matter=self.is_delta_matter)*(1+z)
         c200=concentration_duffy(m,a,is_Dmatter=self.is_delta_matter,is_D500=(self.delta_mass==500))
         norm=1./(np.log(1+c200)-c200/(1+c200))
         xarr=k[:,None]*r200[None,:]/c200[None,:]
@@ -132,22 +133,21 @@ class HODProfile(object) :
         cosx=np.cos(xarr)
         return norm[None,:]*(sinx*(siopc-si)+cosx*(ciopc-ci)-np.sin(c200[None,:]*xarr)/opcx)
 
-    def pk(self,cosmo,z,k,lmmin=6.,lmmax=17.,nlm=256,return_decomposed=False) :
+    def pk(self,k,a,lmmin=6.,lmmax=17.,nlm=256,return_decomposed=False) :
         """
         Returns power spectrum at redshift `z` sampled at all values of k in `k`.
-        
-        cosmo : CCL Cosmology
-        z : redshift
+
         k : array of wavenumbers in CCL units
+        a : scale factor
         lmmin, lmmax, nlm : mass edges and sampling rate for mass integral.
         return_decomposed : if True, returns 1-halo, 2-halo, bias, shot noise and total (see below for order).
         """
-        a=1./(1+z)
+        z = 1./a - 1.
         marr=np.logspace(lmmin,lmmax,nlm); dlm=np.log10(marr[1]/marr[0])
-        u_s=self.u_sat(cosmo,z,marr,k)
-        hmf=ccl.massfunc(cosmo,marr,a);
-        hbf=ccl.halo_bias(cosmo,marr,a);
-        rhoM=ccl.rho_x(cosmo,a,"matter",is_comoving=True)
+        u_s=self.u_sat(z,marr,k)
+        hmf=ccl.massfunc(self.cosmo,marr,a);
+        hbf=ccl.halo_bias(self.cosmo,marr,a);
+        rhoM=ccl.rho_x(self.cosmo,a,"matter",is_comoving=True)
         n0_1h=(rhoM-np.sum(hmf*marr)*dlm)/marr[0]
         n0_2h=(rhoM-np.sum(hmf*hbf*marr)*dlm)/marr[0]
 
@@ -159,20 +159,22 @@ class HODProfile(object) :
 
         #Number density
         ng=np.sum(hmf*ngm)*dlm+n0_1h*ngm[0]
+        if ng<=1E-16 : #Make sure we won't divide by 0
+            return None
 
         #Bias
         b_hod=np.sum((hmf*hbf*ncm)[None,:]*(fc+nsm[None,:]*u_s[:,:]),axis=1)*dlm+n0_2h*ncm[0]*(fc+nsm[0]*u_s[:,0])
         b_hod/=ng
 
         #1-halo
-        p1h=np.sum((hmf*ncm**2)[None,:]*(fc+nsm[None,:]*u_s[:,:])**2,axis=1)*dlm+n0_1h*(ncm[0]*(fc+nsm[0]*u_s[:,0]))**2
+        #p1h=np.sum((hmf*ncm**2)[None,:]*(fc+nsm[None,:]*u_s[:,:])**2,axis=1)*dlm+n0_1h*(ncm[0]*(fc+nsm[0]*u_s[:,0]))**2
+        p1h=np.sum((hmf*ncm)[None,:]*(2*fc*nsm[None,:]*u_s[:,:]+(nsm[None,:]*u_s[:,:])**2),axis=1)*dlm+n0_1h*ncm[0]*(2*fc*nsm[0]*u_s[:,0]+(nsm[0]*u_s[:,0])**2)
         p1h/=ng**2
 
         #2-halo
-        p2h=b_hod**2*ccl.linear_matter_power(cosmo,k,a)
+        p2h=b_hod**2*ccl.linear_matter_power(self.cosmo,k,a)
 
         if return_decomposed :
             return p1h+p2h,p1h,p2h,np.ones_like(k)/ng,b_hod
         else :
             return p1h+p2h
-        
