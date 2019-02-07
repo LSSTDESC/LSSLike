@@ -24,6 +24,15 @@ HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 0.1, 0.1, 1., 0.1, 1., 0.1, 
 HOD_PARAM_MINS = np.atleast_2d(np.array([9., -1., 0., -1., 5.5, -1., 11., -1., 0., -1., 0., -3.]))
 HOD_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 0.8, 1., 13., 1., 17., 1., 2., 1., 1., 0.]))
 
+HOD_BIN_PARAM_KEYS = []
+for i in range(4):
+    HOD_BIN_PARAM_KEYS += ['lmmin_0_bin{}'.format(i), 'sigm_0_bin{}'.format(i), 'm0_0_bin{}'.format(i), \
+                           'm1_0_bin{}'.format(i), 'alpha_0_bin{}'.format(i), 'fc_0_bin{}'.format(i)]
+HOD_BIN_PARAM_MEANS = np.atleast_2d(np.tile(np.array([10., 0.35, 7.5, 13., 1., 0.25]), 4))
+HOD_BIN_PARAM_WIDTHS = np.atleast_2d(np.tile(np.array([1., 0.1, 1., 1., 0.1, 0.1]), 4))
+HOD_BIN_PARAM_MINS = np.atleast_2d(np.tile(np.array([9., 0., 5.5, 11., 0., 0.]), 4))
+HOD_BIN_PARAM_MAXS = np.atleast_2d(np.tile(np.array([15., 0.8, 13., 17., 2., 1.]), 4))
+
 BIAS_PARAM_BZ_KEYS = ['b_0.0', 'b_0.5', 'b_1.0', 'b_2.0', 'b_4.0']
 BIAS_PARAM_BZ_MEANS = np.atleast_2d(np.array([0.7, 1.5, 1.8, 2.0, 2.5]))
 BIAS_PARAM_BZ_WIDTHS = np.atleast_2d(0.1*np.ones(len(BIAS_PARAM_BZ_KEYS)))
@@ -107,15 +116,18 @@ parser.add_argument('--path2output', dest='path2output', type=str, help='Path to
 parser.add_argument('--chainsPrefix', dest='chainsPrefix', type=str, help='Prefix of output chains.', required=True)
 parser.add_argument('--fitBias', dest='fitBias', type=int, help='Tag denoting if to fit for bias parameters.', required=False, default=1)
 parser.add_argument('--biasMod', dest='biasMod', type=str, help='Tag denoting which bias model to use. biasMod = {bz, const}.', required=False, default='bz')
-parser.add_argument('--fitNoise', dest='fitNoise', type=int, help='Tag denoting if to fit shot noise.', required=False, default=1)
+parser.add_argument('--fitNoise', dest='fitNoise', type=int, help='Tag denoting if to fit shot noise.', required=False, default=0)
 parser.add_argument('--lmin', dest='lmin', type=str, help='Tag specifying how lmin is determined. lmin = {auto, kmax}.', required=False, default='auto')
 parser.add_argument('--lmax', dest='lmax', type=str, help='Tag specifying how lmax is determined. lmax = {auto, kmax}.', required=False, default='auto')
 parser.add_argument('--kmax', dest='kmax', type=float, help='If lmax=kmax, this sets kmax to use.', required=False)
-parser.add_argument('--hod', dest='hod', type=int, help='Tag denoting if to use HOD in theory predictions.', required=False, default=0)
+parser.add_argument('--modHOD', dest='modHOD', type=str, help='Tag denoting which HOD model to use in theory predictions.', required=False)
 parser.add_argument('--fitHOD', dest='fitHOD', type=int, help='Tag denoting if to fit for HOD parameters.', required=False, default=0)
 parser.add_argument('--joinSaccs', dest='joinSaccs', type=int, help='Option to join sacc files into one.', required=False, default=1)
 parser.add_argument('--cullCross', dest='cullCross', type=int, help='Option to remove all cross-correlations from fit.', required=False, default=1)
+parser.add_argument('--singleBin', dest='singleBin', type=int, help='Option to fit only one redshift bin.', required=False, default=0)
+parser.add_argument('--binNo', dest='binNo', type=int, help='Index of redshift bin to fit.', required=False)
 parser.add_argument('--platfrm', dest='platfrm', type=str, help='Platform where code is being run, options = {local, cluster}.', required=False, default='local')
+parser.add_argument('--fixCosmo', dest='fixCosmo', type=int, help='Tag denoting if to fix cosmological parameters.', required=False, default=0)
 parser.add_argument('--saccfiles', dest='saccfiles', nargs='+', help='Path to saccfiles.', required=True)
 
 args = parser.parse_args()
@@ -139,7 +151,7 @@ else:
     from cosmoHammer import MpiCosmoHammerSampler
 
 cl_params = {'fitHOD': args.fitHOD,
-             'hod': args.hod,
+             'modHOD': args.modHOD,
              'fitNoise': args.fitNoise}
 
 # Determine noise from noise saccs
@@ -148,6 +160,10 @@ if args.fitNoise == 0:
 
     fnames_saccs_noise = [os.path.splitext(fn)[0]+'_noise.sacc' for fn in args.saccfiles]
     logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
+
+    # New filenames
+    # fnames_saccs_noise = [os.path.join(os.path.split(fn)[0], 'noi_bias.sacc') for fn in args.saccfiles]
+    # logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
     try:
         saccs_noise = [sacc.SACC.loadFromHDF(fn) for fn in fnames_saccs_noise]
         logger.info ("Loaded %i noise sacc files."%len(saccs))
@@ -163,7 +179,10 @@ if args.fitNoise == 0:
     if args.cullCross == 1:
         for s in saccs_noise:
             s.cullCross()
-
+    if args.singleBin == 1:
+        assert args.binNo is not None, 'Single bin fit requested but bin number not specified. Aborting.'
+        for s in saccs_noise:
+            s.selectTracer(args.binNo)
 else:
     saccs_noise = None
 
@@ -172,8 +191,12 @@ if args.joinSaccs == 1:
 if args.cullCross == 1:
     for s in saccs:
         s.cullCross()
+if args.singleBin == 1:
+    assert args.binNo is not None, 'Single bin fit requested but bin number not specified. Aborting.'
+    for s in saccs:
+        s.selectTracer(args.binNo)
 
-Ntomo=len(saccs[0].tracers) ## number of tomo bins
+Ntomo = len(saccs[0].tracers) ## number of tomo bins
 logger.info ("Ntomo bins: %i"%Ntomo)
 
 saccs, saccs_noise = cutLranges(saccs, args.lmin, args.lmax, args.kmax, Z_EFF, cosmo=None, Ntomo=Ntomo, saccs_noise=saccs_noise)
@@ -197,12 +220,28 @@ DEFAULT_PARAMS = {'Omega_b': 0.0486,
                  'has_magnification': None
                 }
 
-# Parameter start center, min, max, start width
-params = np.array([[0.25, 0.1, 0.5, 0.01]])
+if args.fixCosmo == 1:
+    FID_COSMO_PARAMS = {'Omega_b': 0.0486,
+                     'Omega_k': 0.0,
+                     'sigma8': 0.8,
+                     'h': 0.6774,
+                     'n_s': 0.96,
+                     'Omega_c': 0.25,
+                     'transfer_function': 'boltzmann_class',
+                     'matter_power_spectrum': 'halofit'
+                    }
+    logger.info('Fixing comsological parameters to {}.'.format(FID_COSMO_PARAMS))
+    params = np.array([])
+    PARAM_MAPPING = {}
 
-# Cosmological parameters and mapping we will fit
-PARAM_MAPPING = {'Omega_c': 0
-                }
+else:
+    logger.info('Not fixing cosmological parameters.')
+    # Parameter start center, min, max, start width
+    params = np.array([[0.25, 0.1, 0.5, 0.01]])
+
+    # Cosmological parameters and mapping we will fit
+    PARAM_MAPPING = {'Omega_c': 0
+                    }
 
 if args.fitBias == 1:
     if args.biasMod == 'bz':
@@ -211,7 +250,10 @@ if args.fitBias == 1:
                                                 len(PARAM_MAPPING) + len(BIAS_PARAM_BZ_KEYS), dtype='int'))))
         tempparams = np.concatenate((BIAS_PARAM_BZ_MEANS, BIAS_PARAM_BZ_MINS, BIAS_PARAM_BZ_MAXS, \
                                      BIAS_PARAM_BZ_WIDTHS), axis=0)
-        params = np.vstack((params, tempparams.T))
+        if params.shape[0] != 0:
+            params = np.vstack((params, tempparams.T))
+        else:
+            params = tempparams.T
 
         z_b = np.array([0.0, 0.5, 1.0, 2.0, 4.0])
         DEFAULT_PARAMS['z_b'] = z_b
@@ -222,7 +264,10 @@ if args.fitBias == 1:
                                                 len(PARAM_MAPPING) + len(BIAS_PARAM_CONST_KEYS), dtype='int'))))
         tempparams = np.concatenate((BIAS_PARAM_CONST_MEANS, BIAS_PARAM_CONST_MINS, BIAS_PARAM_CONST_MAXS, \
                                      BIAS_PARAM_CONST_WIDTHS), axis=0)
-        params = np.vstack((params, tempparams.T))
+        if params.shape[0] != 0:
+            params = np.vstack((params, tempparams.T))
+        else:
+            params = tempparams.T
 
 else:
     if args.biasMod == 'bz':
@@ -245,18 +290,35 @@ else:
             DEFAULT_PARAMS[bin] = b_bin[i]
 
 if args.fitHOD == 1:
-    PARAM_MAPPING.update(dict(zip(HOD_PARAM_KEYS, np.arange(len(PARAM_MAPPING), \
-                                    len(PARAM_MAPPING) + len(HOD_PARAM_KEYS), dtype='int'))))
-    tempparams = np.concatenate((HOD_PARAM_MEANS, HOD_PARAM_MINS, HOD_PARAM_MAXS, \
-                                     HOD_PARAM_WIDTHS), axis=0)
-    params = np.vstack((params, tempparams.T))
+    if args.modHOD == 'zevol':
+        PARAM_MAPPING.update(dict(zip(HOD_PARAM_KEYS, np.arange(len(PARAM_MAPPING), \
+                                        len(PARAM_MAPPING) + len(HOD_PARAM_KEYS), dtype='int'))))
+        tempparams = np.concatenate((HOD_PARAM_MEANS, HOD_PARAM_MINS, HOD_PARAM_MAXS, \
+                                         HOD_PARAM_WIDTHS), axis=0)
+    elif args.modHOD == 'bin':
+        PARAM_MAPPING.update(dict(zip(HOD_BIN_PARAM_KEYS, np.arange(len(PARAM_MAPPING), \
+                                        len(PARAM_MAPPING) + len(HOD_BIN_PARAM_KEYS), dtype='int'))))
+        tempparams = np.concatenate((HOD_BIN_PARAM_MEANS, HOD_BIN_PARAM_MINS, HOD_BIN_PARAM_MAXS, \
+                                         HOD_BIN_PARAM_WIDTHS), axis=0)
+    else:
+        logger.info('Only modHOD options bin or z_evol supported. Aborting.')
+        raise NotImplementedError()
+
+    if params.shape[0] != 0:
+        params = np.vstack((params, tempparams.T))
+    else:
+        params = tempparams.T
 
 # Set up CosmoHammer
 chain = LikelihoodComputationChain(
                     min=params[:,1],
                     max=params[:,2])
 
-chain.addCoreModule(HSCCoreModule(PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise))
+if args.fixCosmo == 1:
+    chain.addCoreModule(HSCCoreModule(PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, \
+                                      fid_cosmo_params=FID_COSMO_PARAMS))
+else:
+    chain.addCoreModule(HSCCoreModule(PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise))
 
 chain.addLikelihoodModule(HSCLikeModule(saccs))
 
