@@ -2,8 +2,8 @@ import numpy as np
 import pyccl as ccl
 import logging
 from scipy.interpolate import interp1d
-import hod
-import hod_funcs
+from . import hod
+from . import hod_funcs
 
 HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_alpha', 'sigm_0', 'sigm_alpha', 'm0_0', 'm0_alpha', 'm1_0', 'm1_alpha', \
                   'alpha_0', 'alpha_alpha', 'fc_0', 'fc_alpha']
