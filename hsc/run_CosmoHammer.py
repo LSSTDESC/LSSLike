@@ -227,15 +227,16 @@ DEFAULT_PARAMS = {'Omega_b': 0.0486,
                 }
 
 if args.fixCosmo == 1:
-    FID_COSMO_PARAMS = {'Omega_b': 0.0486,
-                     'Omega_k': 0.0,
-                     'sigma8': 0.8,
-                     'h': 0.6774,
-                     'n_s': 0.96,
-                     'Omega_c': 0.25,
-                     'transfer_function': 'boltzmann_class',
-                     'matter_power_spectrum': 'halofit'
-                    }
+    FID_COSMO_PARAMS = {'Omega_b': 0.0493,
+                        'Omega_k': 0.0,
+                        'sigma8': 0.8111,
+                        'h': 0.6736,
+                        'n_s': 0.9649,
+                        'Omega_c': 0.264,
+                        'transfer_function': 'eisenstein_hu',
+                        'matter_power_spectrum': 'halofit'
+                        }
+
     logger.info('Fixing comsological parameters to {}.'.format(FID_COSMO_PARAMS))
     params = np.array([])
     PARAM_MAPPING = {}
