@@ -72,10 +72,10 @@ class HSCCoreModule(object):
                     cls=np.zeros(len(self.ells))
                     if self.cl_params['modHOD'] is None:
                         logger.info('modHOD = {}. Not using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                        cls = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1))
+                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1))
                     elif self.cl_params['modHOD'] == 'zevol':
                         logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                        cls = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
                     elif self.cl_params['modHOD'] == 'bin':
                         dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'], i1)
                         self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0_0=True, islogm1_0=True)
@@ -84,9 +84,8 @@ class HSCCoreModule(object):
                         # Provide a, k grids
                         pk_hod_arr = np.log(np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr]))
                         pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
-
                         logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                        cls = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
                     else:
                         logger.info('Only modHOD options zevol and bin supported.')
                         raise NotImplementedError()
