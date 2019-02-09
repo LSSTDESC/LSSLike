@@ -32,12 +32,15 @@ HOD_BIN_PARAM_MEANS = np.atleast_2d(np.tile(np.array([10., 0.35, 7.5, 13., 1., 0
 HOD_BIN_PARAM_WIDTHS = np.atleast_2d(np.tile(np.array([1., 0.1, 1., 1., 0.1, 0.1]), 4))
 HOD_BIN_PARAM_MINS = np.atleast_2d(np.tile(np.array([9., 0., 5.5, 11., 0., 0.]), 4))
 HOD_BIN_PARAM_MAXS = np.atleast_2d(np.tile(np.array([15., 0.8, 13., 17., 2., 1.]), 4))
+def get_single_bin_keys(bin):
+    HOD_SINGLE_BIN_PARAM_KEYS = ['lmmin_0_bin{}'.format(bin), 'sigm_0_bin{}'.format(bin), 'm0_0_bin{}'.format(bin), \
+                           'm1_0_bin{}'.format(bin), 'alpha_0_bin{}'.format(bin), 'fc_0_bin{}'.format(bin)]
+    HOD_SINGLE_BIN_PARAM_MEANS = np.atleast_2d(np.array([10., 0.35, 7.5, 13., 1., 0.25]))
+    HOD_SINGLE_BIN_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 1., 1., 0.1, 0.1]))
+    HOD_SINGLE_BIN_PARAM_MINS = np.atleast_2d(np.array([9., 0., 5.5, 11., 0., 0.]))
+    HOD_SINGLE_BIN_PARAM_MAXS = np.atleast_2d(np.array([15., 0.8, 13., 17., 2., 1.]))
 
-HOD_SINGLE_BIN_PARAM_KEYS = ['lmmin_0_bin0', 'sigm_0_bin0', 'm0_0_bin0', 'm1_0_bin0', 'alpha_0_bin0', 'fc_0_bin0']
-HOD_SINGLE_BIN_PARAM_MEANS = np.atleast_2d(np.array([10., 0.35, 7.5, 13., 1., 0.25]))
-HOD_SINGLE_BIN_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 1., 1., 0.1, 0.1]))
-HOD_SINGLE_BIN_PARAM_MINS = np.atleast_2d(np.array([9., 0., 5.5, 11., 0., 0.]))
-HOD_SINGLE_BIN_PARAM_MAXS = np.atleast_2d(np.array([15., 0.8, 13., 17., 2., 1.]))
+    return HOD_SINGLE_BIN_PARAM_KEYS, HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_WIDTHS, HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS
 
 BIAS_PARAM_BZ_KEYS = ['b_0.0', 'b_0.5', 'b_1.0', 'b_2.0', 'b_4.0']
 BIAS_PARAM_BZ_MEANS = np.atleast_2d(np.array([0.7, 1.5, 1.8, 2.0, 2.5]))
@@ -309,6 +312,8 @@ if args.fitHOD == 1:
             tempparams = np.concatenate((HOD_BIN_PARAM_MEANS, HOD_BIN_PARAM_MINS, HOD_BIN_PARAM_MAXS, \
                                              HOD_BIN_PARAM_WIDTHS), axis=0)
         else:
+            HOD_SINGLE_BIN_PARAM_KEYS, HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_WIDTHS, \
+                HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS = get_single_bin_keys(args.binNo)
             PARAM_MAPPING.update(dict(zip(HOD_SINGLE_BIN_PARAM_KEYS, np.arange(len(PARAM_MAPPING), \
                                             len(PARAM_MAPPING) + len(HOD_SINGLE_BIN_PARAM_KEYS), dtype='int'))))
             tempparams = np.concatenate((HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS, \
