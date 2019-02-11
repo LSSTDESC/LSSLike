@@ -9,6 +9,7 @@ from matplotlib import cm
 def lmminf(z) :
     #Returns log10(M_min)
     return 11.+0.5*(1+z)
+
 sigmf=lambda x: 0.31
 
 def m0f(z) :
