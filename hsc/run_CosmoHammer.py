@@ -32,13 +32,23 @@ HOD_BIN_PARAM_MEANS = np.atleast_2d(np.tile(np.array([10., 0.35, 7.5, 13., 1., 0
 HOD_BIN_PARAM_WIDTHS = np.atleast_2d(np.tile(np.array([1., 0.1, 1., 1., 0.1, 0.1]), 4))
 HOD_BIN_PARAM_MINS = np.atleast_2d(np.tile(np.array([9., 0., 5.5, 11., 0., 0.]), 4))
 HOD_BIN_PARAM_MAXS = np.atleast_2d(np.tile(np.array([15., 0.8, 13., 17., 2., 1.]), 4))
-def get_single_bin_keys(bin):
+
+def get_single_bin_keys(bin, fixHODParams=None):
     HOD_SINGLE_BIN_PARAM_KEYS = ['lmmin_0_bin{}'.format(bin), 'sigm_0_bin{}'.format(bin), 'm0_0_bin{}'.format(bin), \
                            'm1_0_bin{}'.format(bin), 'alpha_0_bin{}'.format(bin), 'fc_0_bin{}'.format(bin)]
     HOD_SINGLE_BIN_PARAM_MEANS = np.atleast_2d(np.array([10., 0.35, 7.5, 13., 1., 0.25]))
     HOD_SINGLE_BIN_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 1., 1., 0.1, 0.1]))
     HOD_SINGLE_BIN_PARAM_MINS = np.atleast_2d(np.array([9., 0., 5.5, 11., 0., 0.]))
     HOD_SINGLE_BIN_PARAM_MAXS = np.atleast_2d(np.array([15., 0.8, 13., 17., 2., 1.]))
+
+    if fixHODParams is not None:
+        for key in fixHODParams:
+            ind = HOD_SINGLE_BIN_PARAM_KEYS.index(key)
+            HOD_SINGLE_BIN_PARAM_KEYS.remove(key)
+            HOD_SINGLE_BIN_PARAM_MEANS = np.delete(HOD_SINGLE_BIN_PARAM_MEANS, ind, axis=1)
+            HOD_SINGLE_BIN_PARAM_WIDTHS = np.delete(HOD_SINGLE_BIN_PARAM_WIDTHS, ind, axis=1)
+            HOD_SINGLE_BIN_PARAM_MINS = np.delete(HOD_SINGLE_BIN_PARAM_MINS, ind, axis=1)
+            HOD_SINGLE_BIN_PARAM_MAXS = np.delete(HOD_SINGLE_BIN_PARAM_MAXS, ind, axis=1)
 
     return HOD_SINGLE_BIN_PARAM_KEYS, HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_WIDTHS, HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS
 
@@ -137,6 +147,7 @@ parser.add_argument('--singleBin', dest='singleBin', type=int, help='Option to f
 parser.add_argument('--binNo', dest='binNo', type=int, help='Index of redshift bin to fit.', required=False)
 parser.add_argument('--platfrm', dest='platfrm', type=str, help='Platform where code is being run, options = {local, cluster}.', required=False, default='local')
 parser.add_argument('--fixCosmo', dest='fixCosmo', type=int, help='Tag denoting if to fix cosmological parameters.', required=False, default=0)
+parser.add_argument('--fixHODParams', dest='fixHODParams', type=int, help='Tag denoting if to fix a subset of the HOD parameters.', required=False, default=0)
 parser.add_argument('--saccfiles', dest='saccfiles', nargs='+', help='Path to saccfiles.', required=True)
 
 args = parser.parse_args()
@@ -216,19 +227,6 @@ for i, s in enumerate(saccs_noise):
         binmask = (s.binning.binar['T1']==ii)&(s.binning.binar['T2']==ii)
         noise[i][ii] = s.mean.vector[binmask]
 
-# Default paramters
-DEFAULT_PARAMS = {'Omega_b': 0.0486,
-                 'Omega_k': 0.0,
-                 'Omega_nu': 0.001436176,
-                 'sigma8': 0.8,
-                 'h': 0.6774,
-                 'n_s': 0.96,
-                 'transfer_function': 'boltzmann_class',
-                 'matter_power_spectrum': 'halofit',
-                 'has_rsd': False,
-                 'has_magnification': None
-                }
-
 if args.fixCosmo == 1:
     FID_COSMO_PARAMS = {'Omega_b': 0.0493,
                         'Omega_k': 0.0,
@@ -240,18 +238,46 @@ if args.fixCosmo == 1:
                         'matter_power_spectrum': 'halofit'
                         }
 
-    logger.info('Fixing comsological parameters to {}.'.format(FID_COSMO_PARAMS))
+    # Default paramters
+    DEFAULT_PARAMS = {'has_rsd': False,
+                     'has_magnification': None
+                    }
+
+    logger.info('Fixing cosmological parameters to {}.'.format(FID_COSMO_PARAMS))
     params = np.array([])
     PARAM_MAPPING = {}
 
 else:
     logger.info('Not fixing cosmological parameters.')
+
+    # Default paramters
+    DEFAULT_PARAMS = {'Omega_b': 0.0486,
+                     'Omega_k': 0.0,
+                     'Omega_nu': 0.001436176,
+                     'sigma8': 0.8,
+                     'h': 0.6774,
+                     'n_s': 0.96,
+                     'transfer_function': 'boltzmann_class',
+                     'matter_power_spectrum': 'halofit',
+                     'has_rsd': False,
+                     'has_magnification': None
+                    }
+
     # Parameter start center, min, max, start width
     params = np.array([[0.25, 0.1, 0.5, 0.01]])
 
     # Cosmological parameters and mapping we will fit
     PARAM_MAPPING = {'Omega_c': 0
                     }
+
+if args.fixHODParams == 1:
+    FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.3,
+                      'alpha_0_bin{}'.format(args.binNo): 1.0,
+                      'fc_0_bin{}'.format(args.binNo): 0.9
+                     }
+
+    logger.info('Fixing HOD parameters to {}.'.format(FID_HOD_PARAMS))
+    DEFAULT_PARAMS.update(FID_HOD_PARAMS)
 
 if args.fitBias == 1:
     if args.biasMod == 'bz':
@@ -312,8 +338,13 @@ if args.fitHOD == 1:
             tempparams = np.concatenate((HOD_BIN_PARAM_MEANS, HOD_BIN_PARAM_MINS, HOD_BIN_PARAM_MAXS, \
                                              HOD_BIN_PARAM_WIDTHS), axis=0)
         else:
-            HOD_SINGLE_BIN_PARAM_KEYS, HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_WIDTHS, \
-                HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS = get_single_bin_keys(args.binNo)
+            if args.fixHODParams == 0:
+                HOD_SINGLE_BIN_PARAM_KEYS, HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_WIDTHS, \
+                    HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS = get_single_bin_keys(args.binNo)
+            else:
+                HOD_SINGLE_BIN_PARAM_KEYS, HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_WIDTHS, \
+                    HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS = get_single_bin_keys(args.binNo, \
+                                                                                fixHODParams=FID_HOD_PARAMS)
             PARAM_MAPPING.update(dict(zip(HOD_SINGLE_BIN_PARAM_KEYS, np.arange(len(PARAM_MAPPING), \
                                             len(PARAM_MAPPING) + len(HOD_SINGLE_BIN_PARAM_KEYS), dtype='int'))))
             tempparams = np.concatenate((HOD_SINGLE_BIN_PARAM_MEANS, HOD_SINGLE_BIN_PARAM_MINS, HOD_SINGLE_BIN_PARAM_MAXS, \
