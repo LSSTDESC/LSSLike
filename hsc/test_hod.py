@@ -1,6 +1,6 @@
 import numpy as np
 import pyccl as ccl
-from hod import HODProfile
+from desclss.hod import HODProfile
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
@@ -9,6 +9,7 @@ from matplotlib import cm
 def lmminf(z) :
     #Returns log10(M_min)
     return 11.+0.5*(1+z)
+
 sigmf=lambda x: 0.31
 
 def m0f(z) :
@@ -36,16 +37,18 @@ def fcf(z) :
 #                                                            #
 ##############################################################
 
-#Initialize HOD profile
-hod=HODProfile(lmminf,sigmf,fcf,m0f,m1f,alphaf)
 
 #Initialize CCL cosmology
 cosmo=ccl.Cosmology(Omega_c=0.27, Omega_b=0.05, h=0.67, sigma8=0.8, n_s=0.96)
 karr=np.logspace(-4.,2.,512)
 zarr=np.linspace(0.,3.,64)[::-1]
 
+#Initialize HOD profile
+hod=HODProfile(cosmo,lmminf,sigmf,fcf,m0f,m1f,alphaf)
+
+
 #Compute power spectrum at a given redshift (just for illustrative purposes)
-pkarr,p1harr,p2harr,nkarr,bkarr=hod.pk(cosmo,0.5,karr,return_decomposed=True)
+pkarr,p1harr,p2harr,nkarr,bkarr=hod.pk(karr,0.5,return_decomposed=True)
 #Plot for fun
 plt.figure()
 plt.plot(karr,p1harr,'r-',label='1-halo')
@@ -59,7 +62,7 @@ plt.xlabel('$k\\,\\,[{\\rm Mpc}^{-1}]$',fontsize=15)
 plt.ylabel('$P(k)\\,\\,[{\\rm Mpc}^{-1}]$',fontsize=15)
 
 #Compute array of power spectra at different redshifts
-pk_z_arr=np.log(np.array([hod.pk(cosmo,z,karr) for z in zarr]))
+pk_z_arr=np.log(np.array([hod.pk(karr,1/(1+z)) for z in zarr]))
 #Plot for fun
 plt.figure()
 for ip,p in enumerate(pk_z_arr) :
