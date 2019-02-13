@@ -273,7 +273,9 @@ else:
 if args.fixHODParams == 1:
     FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.3,
                       'alpha_0_bin{}'.format(args.binNo): 1.0,
-                      'fc_0_bin{}'.format(args.binNo): 0.9
+                      'fc_0_bin{}'.format(args.binNo): 0.9,
+                      'lmmin_0_bin{}'.format(args.binNo): 12.,
+                      'm1_0_bin{}'.format(args.binNo): 12.6
                      }
 
     logger.info('Fixing HOD parameters to {}.'.format(FID_HOD_PARAMS))
