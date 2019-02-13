@@ -19,27 +19,27 @@ logger = logging.getLogger(__name__)
 
 HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_alpha', 'sigm_0', 'sigm_alpha', 'm0_0', 'm0_alpha', 'm1_0', 'm1_alpha', \
                   'alpha_0', 'alpha_alpha', 'fc_0', 'fc_alpha']
-HOD_PARAM_MEANS = np.atleast_2d(np.array([10., 0., 0.35, 0.3, 7.5, 0.7, 13., 0.1, 1., 0.3, 0.25, -1.5]))
+HOD_PARAM_MEANS = np.atleast_2d(np.array([10., 0., 0.4, 0.3, 12, 0.7, 13.5, 0.1, 1., 0.3, 0.25, -1.5]))
 HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 0.1, 0.1, 1., 0.1, 1., 0.1, 0.1, 0.1, 0.1, 0.1]))
-HOD_PARAM_MINS = np.atleast_2d(np.array([9., -1., 0., -1., 5.5, -1., 11., -1., 0., -1., 0., -3.]))
-HOD_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 0.8, 1., 13., 1., 17., 1., 2., 1., 1., 0.]))
+HOD_PARAM_MINS = np.atleast_2d(np.array([10., -1., 0.1, -1., 10, -1., 10., -1., 0.5, -1., 0.1, -3.]))
+HOD_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 1., 1., 15., 1., 15., 1., 1.5, 1., 1., 0.]))
 
 HOD_BIN_PARAM_KEYS = []
 for i in range(4):
     HOD_BIN_PARAM_KEYS += ['lmmin_0_bin{}'.format(i), 'sigm_0_bin{}'.format(i), 'm0_0_bin{}'.format(i), \
                            'm1_0_bin{}'.format(i), 'alpha_0_bin{}'.format(i), 'fc_0_bin{}'.format(i)]
-HOD_BIN_PARAM_MEANS = np.atleast_2d(np.tile(np.array([10., 0.35, 7.5, 13., 1., 0.25]), 4))
+HOD_BIN_PARAM_MEANS = np.atleast_2d(np.tile(np.array([12., 0.4, 12., 13.5, 1., 0.25]), 4))
 HOD_BIN_PARAM_WIDTHS = np.atleast_2d(np.tile(np.array([1., 0.1, 1., 1., 0.1, 0.1]), 4))
-HOD_BIN_PARAM_MINS = np.atleast_2d(np.tile(np.array([9., 0., 5.5, 11., 0., 0.]), 4))
-HOD_BIN_PARAM_MAXS = np.atleast_2d(np.tile(np.array([15., 0.8, 13., 17., 2., 1.]), 4))
+HOD_BIN_PARAM_MINS = np.atleast_2d(np.tile(np.array([10., 0.1, 10, 10., 0.5, 0.1]), 4))
+HOD_BIN_PARAM_MAXS = np.atleast_2d(np.tile(np.array([15., 1., 15., 15., 1.5, 1.]), 4))
 
 def get_single_bin_keys(bin, fixHODParams=None):
     HOD_SINGLE_BIN_PARAM_KEYS = ['lmmin_0_bin{}'.format(bin), 'sigm_0_bin{}'.format(bin), 'm0_0_bin{}'.format(bin), \
                            'm1_0_bin{}'.format(bin), 'alpha_0_bin{}'.format(bin), 'fc_0_bin{}'.format(bin)]
-    HOD_SINGLE_BIN_PARAM_MEANS = np.atleast_2d(np.array([10., 0.35, 7.5, 13., 1., 0.25]))
+    HOD_SINGLE_BIN_PARAM_MEANS = np.atleast_2d(np.array([12., 0.4, 12., 13.5, 1., 0.25]))
     HOD_SINGLE_BIN_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 1., 1., 0.1, 0.1]))
-    HOD_SINGLE_BIN_PARAM_MINS = np.atleast_2d(np.array([9., 0., 5.5, 11., 0., 0.]))
-    HOD_SINGLE_BIN_PARAM_MAXS = np.atleast_2d(np.array([15., 0.8, 13., 17., 2., 1.]))
+    HOD_SINGLE_BIN_PARAM_MINS = np.atleast_2d(np.array([10., 0.1, 10, 10., 0.5, 0.1]))
+    HOD_SINGLE_BIN_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 15., 15., 1.5, 1.]))
 
     if fixHODParams is not None:
         for key in fixHODParams:
@@ -271,12 +271,17 @@ else:
                     }
 
 if args.fixHODParams == 1:
-    FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.3,
+    FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.4,
                       'alpha_0_bin{}'.format(args.binNo): 1.0,
-                      'fc_0_bin{}'.format(args.binNo): 0.9,
-                      'lmmin_0_bin{}'.format(args.binNo): 12.,
-                      'm1_0_bin{}'.format(args.binNo): 12.6
+                      'fc_0_bin{}'.format(args.binNo): 0.25
                      }
+
+    # FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.3,
+    #               'alpha_0_bin{}'.format(args.binNo): 1.0,
+    #               'fc_0_bin{}'.format(args.binNo): 0.9,
+    #               'lmmin_0_bin{}'.format(args.binNo): 12.,
+    #               'm1_0_bin{}'.format(args.binNo): 12.6
+    #              }
 
     logger.info('Fixing HOD parameters to {}.'.format(FID_HOD_PARAMS))
     DEFAULT_PARAMS.update(FID_HOD_PARAMS)
