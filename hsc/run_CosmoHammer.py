@@ -11,6 +11,7 @@ import pyccl as ccl
 from cosmoHammer import LikelihoodComputationChain
 from hsc_like_mod import HSCLikeModule
 from hsc_core_module import HSCCoreModule
+from InitializeFromChain import InitializeFromChain
 
 
 import logging
@@ -148,6 +149,8 @@ parser.add_argument('--binNo', dest='binNo', type=int, help='Index of redshift b
 parser.add_argument('--platfrm', dest='platfrm', type=str, help='Platform where code is being run, options = {local, cluster}.', required=False, default='local')
 parser.add_argument('--fixCosmo', dest='fixCosmo', type=int, help='Tag denoting if to fix cosmological parameters.', required=False, default=0)
 parser.add_argument('--fixHODParams', dest='fixHODParams', type=int, help='Tag denoting if to fix a subset of the HOD parameters.', required=False, default=0)
+parser.add_argument('--rerun', dest='rerun', type=int, help='Tag denoting if to rerun from an existing chain.', required=False, default=0)
+parser.add_argument('--path2rerunchain', dest='path2rerunchain', type=str, help='Path to chains from which to rerun constraints.', required=False)
 parser.add_argument('--saccfiles', dest='saccfiles', nargs='+', help='Path to saccfiles.', required=True)
 
 args = parser.parse_args()
@@ -382,21 +385,45 @@ chain.addLikelihoodModule(HSCLikeModule(saccs))
 chain.setup()
 
 if args.platfrm == 'local':
-    sampler = CosmoHammerSampler(
-                params= params,
-                likelihoodComputationChain=chain,
-                filePrefix=os.path.join(args.path2output, args.chainsPrefix),
-                walkersRatio=2,
-                burninIterations=3000,
-                sampleIterations=1000)
+    if args.rerun == 0:
+        sampler = CosmoHammerSampler(
+                    params= params,
+                    likelihoodComputationChain=chain,
+                    filePrefix=os.path.join(args.path2output, args.chainsPrefix),
+                    walkersRatio=2,
+                    burninIterations=3000,
+                    sampleIterations=1000)
+    else:
+        assert args.path2rerunchain is not None, 'rerun is {}, but path to rerun chains not set. Aborting.'.format(args.rerun)
+        path2chain = args.path2rerunchain
+        sampler = CosmoHammerSampler(
+                    params= params,
+                    likelihoodComputationChain=chain,
+                    filePrefix=os.path.join(args.path2output, args.chainsPrefix),
+                    walkersRatio=2,
+                    burninIterations=3000,
+                    sampleIterations=1000,
+                    initPositionGenerator=InitializeFromChain(path2chain, fraction = 0.8))
 else:
-    sampler = MpiCosmoHammerSampler(
-            params= params,
-            likelihoodComputationChain=chain,
-            filePrefix=os.path.join(args.path2output, args.chainsPrefix),
-            walkersRatio=8,
-            burninIterations=3000,
-            sampleIterations=1000)
+    if args.rerun == 0:
+        sampler = MpiCosmoHammerSampler(
+                    params= params,
+                    likelihoodComputationChain=chain,
+                    filePrefix=os.path.join(args.path2output, args.chainsPrefix),
+                    walkersRatio=8,
+                    burninIterations=3000,
+                    sampleIterations=1000)
+    else:
+        assert args.path2rerunchain is not None, 'rerun is {}, but path to rerun chains not set. Aborting.'.format(args.rerun)
+        path2chain = args.path2rerunchain
+        sampler = MpiCosmoHammerSampler(
+                    params= params,
+                    likelihoodComputationChain=chain,
+                    filePrefix=os.path.join(args.path2output, args.chainsPrefix),
+                    walkersRatio=8,
+                    burninIterations=3000,
+                    sampleIterations=1000,
+                    initPositionGenerator=InitializeFromChain(path2chain, fraction = 0.8))
 
 start = time.time()
 sampler.startSampling()
