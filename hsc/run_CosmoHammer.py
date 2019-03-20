@@ -18,12 +18,32 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_alpha', 'sigm_0', 'sigm_alpha', 'm0_0', 'm0_alpha', 'm1_0', 'm1_alpha', \
-                  'alpha_0', 'alpha_alpha', 'fc_0', 'fc_alpha']
+HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
+                  'alpha_0', 'alpha_1', 'fc_0', 'fc_1']
 HOD_PARAM_MEANS = np.atleast_2d(np.array([10., 0., 0.4, 0.3, 12, 0.7, 13.5, 0.1, 1., 0.3, 0.25, -1.5]))
 HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 0.1, 0.1, 1., 0.1, 1., 0.1, 0.1, 0.1, 0.1, 0.1]))
 HOD_PARAM_MINS = np.atleast_2d(np.array([10., -1., 0.1, -1., 10, -1., 10., -1., 0.5, -1., 0.1, -3.]))
 HOD_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 1., 1., 15., 1., 15., 1., 1.5, 1., 1., 0.]))
+
+def remove_fixed_hod_param_keys(fixHODParams):
+
+    HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
+                  'alpha_0', 'alpha_1', 'fc_0', 'fc_1']
+    HOD_PARAM_MEANS = np.atleast_2d(np.array([10., 0., 0.4, 0.3, 12, 0.7, 13.5, 0.1, 1., 0.3, 0.25, -1.5]))
+    HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 0.1, 0.1, 1., 0.1, 1., 0.1, 0.1, 0.1, 0.1, 0.1]))
+    HOD_PARAM_MINS = np.atleast_2d(np.array([10., -1., 0.1, -1., 10, -1., 10., -1., 0.5, -1., 0.1, -3.]))
+    HOD_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 1., 1., 15., 1., 15., 1., 1.5, 1., 1., 0.]))
+
+    if fixHODParams is not None:
+        for key in fixHODParams:
+            ind = HOD_PARAM_KEYS.index(key)
+            HOD_PARAM_KEYS.remove(key)
+            HOD_PARAM_MEANS = np.delete(HOD_PARAM_MEANS, ind, axis=1)
+            HOD_PARAM_WIDTHS = np.delete(HOD_PARAM_WIDTHS, ind, axis=1)
+            HOD_PARAM_MINS = np.delete(HOD_PARAM_MINS, ind, axis=1)
+            HOD_PARAM_MAXS = np.delete(HOD_PARAM_MAXS, ind, axis=1)
+
+    return HOD_PARAM_KEYS, HOD_PARAM_MEANS, HOD_PARAM_WIDTHS, HOD_PARAM_MINS, HOD_PARAM_MAXS
 
 HOD_BIN_PARAM_KEYS = []
 for i in range(4):
@@ -237,7 +257,7 @@ if args.fixCosmo == 1:
                         'h': 0.6736,
                         'n_s': 0.9649,
                         'Omega_c': 0.264,
-                        'transfer_function': 'eisenstein_hu',
+                        'transfer_function': 'boltzmann_class',
                         'matter_power_spectrum': 'halofit'
                         }
 
@@ -284,6 +304,14 @@ if args.fixHODParams == 1:
     #               'fc_0_bin{}'.format(args.binNo): 0.9,
     #               'lmmin_0_bin{}'.format(args.binNo): 12.,
     #               'm1_0_bin{}'.format(args.binNo): 12.6
+    #              }
+
+    # FID_HOD_PARAMS = {'sigm_0_0': 0.4,
+    #                   'sigm_0_1': 0.,
+    #                   'alpha_0_0': 1.,
+    #                   'alpha_0_1': 0.,
+    #                   'fc_0_0': 0.25,
+    #                   'fc_0_1': 0.
     #              }
 
     logger.info('Fixing HOD parameters to {}.'.format(FID_HOD_PARAMS))
@@ -337,8 +365,12 @@ else:
 
 if args.fitHOD == 1:
     if args.modHOD == 'zevol':
+        if args.fixHODParams == 1:
+            HOD_PARAM_KEYS, HOD_PARAM_MEANS, HOD_PARAM_WIDTHS, HOD_PARAM_MINS, HOD_PARAM_MAXS = \
+                                                            remove_fixed_hod_param_keys(FID_HOD_PARAMS)
+
         PARAM_MAPPING.update(dict(zip(HOD_PARAM_KEYS, np.arange(len(PARAM_MAPPING), \
-                                        len(PARAM_MAPPING) + len(HOD_PARAM_KEYS), dtype='int'))))
+                                            len(PARAM_MAPPING) + len(HOD_PARAM_KEYS), dtype='int'))))
         tempparams = np.concatenate((HOD_PARAM_MEANS, HOD_PARAM_MINS, HOD_PARAM_MAXS, \
                                          HOD_PARAM_WIDTHS), axis=0)
     elif args.modHOD == 'bin':

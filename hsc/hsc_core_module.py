@@ -122,8 +122,8 @@ class HSCCoreModule(object):
                                 'transfer_function', 'matter_power_spectrum', 'baryons_power_spectrum',
                                 'mass_function', 'halo_concentration', 'emulator_neutrinos']
         elif paramtype == 'hod_zevol':
-            KEYS = ['lmmin_0', 'lmmin_alpha', 'sigm_0', 'sigm_alpha', 'm0_0', 'm0_alpha', 'm1_0', 'm1_alpha', \
-                  'alpha_0', 'alpha_alpha', 'fc_0', 'fc_alpha']
+            KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
+                  'alpha_0', 'alpha_1', 'fc_0', 'fc_1']
         elif paramtype == 'hod_bin':
             assert bin is not None, 'paramtype = {}, but bin number not given. Aborting.'.format(paramtype)
             BIN_KEYS = ['lmmin_0_bin{}'.format(bin), 'sigm_0_bin{}'.format(bin), 'm0_0_bin{}'.format(bin), \
