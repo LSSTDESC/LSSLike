@@ -12,6 +12,7 @@ from cosmoHammer import LikelihoodComputationChain
 from hsc_like_mod import HSCLikeModule
 from hsc_core_module import HSCCoreModule
 from InitializeFromChain import InitializeFromChain
+from desclss.halo_mod_corr import HaloModCorrection
 
 
 import logging
@@ -162,6 +163,7 @@ parser.add_argument('--lmax', dest='lmax', type=str, help='Tag specifying how lm
 parser.add_argument('--kmax', dest='kmax', type=float, help='If lmax=kmax, this sets kmax to use.', required=False)
 parser.add_argument('--modHOD', dest='modHOD', type=str, help='Tag denoting which HOD model to use in theory predictions.', required=False)
 parser.add_argument('--fitHOD', dest='fitHOD', type=int, help='Tag denoting if to fit for HOD parameters.', required=False, default=0)
+parser.add_argument('--corrHM', dest='corrHM', type=int, help='Tag denoting if to correct halo model power spectrum.', required=False, default=0)
 parser.add_argument('--joinSaccs', dest='joinSaccs', type=int, help='Option to join sacc files into one.', required=False, default=1)
 parser.add_argument('--cullCross', dest='cullCross', type=int, help='Option to remove all cross-correlations from fit.', required=False, default=1)
 parser.add_argument('--singleBin', dest='singleBin', type=int, help='Option to fit only one redshift bin.', required=False, default=0)
@@ -273,6 +275,7 @@ if args.fixCosmo == 1:
 else:
     logger.info('Not fixing cosmological parameters.')
 
+    FID_COSMO_PARAMS = None
     # Default paramters
     DEFAULT_PARAMS = {'Omega_b': 0.0486,
                      'Omega_k': 0.0,
@@ -401,16 +404,32 @@ if args.fitHOD == 1:
     else:
         params = tempparams.T
 
+if args.corrHM == 1:
+    assert args.modHOD is not None, 'Halo model correction requested but not using HOD for theory predictions. Aborting.'
+
+    FID_COSMO_PARAMS = {'Omega_b': 0.0493,
+                    'Omega_k': 0.0,
+                    'sigma8': 0.8111,
+                    'h': 0.6736,
+                    'n_s': 0.9649,
+                    'Omega_c': 0.264,
+                    'transfer_function': 'boltzmann_class',
+                    'matter_power_spectrum': 'halofit'
+                    }
+
+    logger.info('Setting up halo model correction with fixed cosmological parameters set to {}.'.format(FID_COSMO_PARAMS))
+    cosmo = ccl.Cosmology(**FID_COSMO_PARAMS)
+    HMCorr = HaloModCorrection(cosmo, k_range=[1e-4, 1e2], nlk=256, z_range=[0., 3.], nz=50)
+else:
+    HMCorr = None
+
 # Set up CosmoHammer
 chain = LikelihoodComputationChain(
                     min=params[:,1],
                     max=params[:,2])
 
-if args.fixCosmo == 1:
-    chain.addCoreModule(HSCCoreModule(PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, \
-                                      fid_cosmo_params=FID_COSMO_PARAMS))
-else:
-    chain.addCoreModule(HSCCoreModule(PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise))
+chain.addCoreModule(HSCCoreModule(PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, \
+                                      fid_cosmo_params=FID_COSMO_PARAMS, HMCorr=HMCorr))
 
 chain.addLikelihoodModule(HSCLikeModule(saccs))
 

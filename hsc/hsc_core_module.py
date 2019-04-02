@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 class HSCCoreModule(object):
     """
-    Dummy Core Module for calculating the squares of parameters.
+    Core Module for calculating HSC clustering cls.
     """
 
-    def __init__(self, PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, fid_cosmo_params=None):
+    def __init__(self, PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, fid_cosmo_params=None, HMCorr=None):
         """
-        Constructor of the DummyCoreModule
+        Constructor of the HSCCoreModule
         """
 
         self.mapping = PARAM_MAPPING
@@ -29,8 +29,14 @@ class HSCCoreModule(object):
         self.noise = noise
         self.lmax = self.saccs[0].binning.windows[0].w.shape[0]
         self.ells = np.arange(self.lmax)
+
         if fid_cosmo_params is not None:
+            logger.info('Fiducial cosmological parameters provided. Fixing cosmology to fiducial values.')
             self.cosmo = ccl.Cosmology(**fid_cosmo_params)
+        if HMCorr is not None:
+            logger.info('HMCorr provided. Correcting halo model.')
+            self.corr_halo_mod = True
+            self.HMCorr = HMCorr
 
     def __call__(self, ctx):
         """
@@ -63,33 +69,45 @@ class HSCCoreModule(object):
                 if self.cl_params['modHOD'] == 'zevol':
                     hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
                                                  self.hodpars.m1f, self.hodpars.alphaf)
-                    # Provide a, k grids
-                    pk_hod_arr = np.log(np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr]))
+                    # Compute HOD Pk
+                    pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                    # Correct halo model Pk
+                    if self.corr_halo_mod:
+                        pk_hod_arr *= self.rk_hm
+                    pk_hod_arr = np.log(pk_hod_arr)
                     pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
 
                 for i1, i2, _, ells_binned, ndx in s.sortTracers() :
-                    lmax_this=int(np.amax(ells_binned))
-                    cls=np.zeros(len(self.ells))
+                    lmax_this = int(np.amax(ells_binned))
+                    cls = np.zeros(len(self.ells))
                     if self.cl_params['modHOD'] is None:
                         logger.info('modHOD = {}. Not using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
                         cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1))
+
                     elif self.cl_params['modHOD'] == 'zevol':
                         logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
                         cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+
                     elif self.cl_params['modHOD'] == 'bin':
                         dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'], i1)
                         self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0_0=True, islogm1_0=True)
                         hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
                                                      self.hodpars.m1f, self.hodpars.alphaf)
-                        # Provide a, k grids
-                        pk_hod_arr = np.log(np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr]))
+                        # Compute HOD Pk
+                        pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                        # Correct halo model Pk
+                        if self.corr_halo_mod:
+                            pk_hod_arr *= self.rk_hm
+                        pk_hod_arr = np.log(pk_hod_arr)
                         pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
                         logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
                         cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+
                     else:
                         logger.info('Only modHOD options zevol and bin supported.')
                         raise NotImplementedError()
-                    #Extrapolate at high ell
+
+                    # Extrapolate at high ell
                     cls[lmax_this+1:]=cls[lmax_this]*(cls[lmax_this]/cls[lmax_this-1])**(self.ells[lmax_this+1:]-lmax_this)
 
                     cls_conv = np.zeros(ndx.shape[0])
@@ -196,3 +214,7 @@ class HSCCoreModule(object):
             logger.info('Using HOD for theory predictions but not fitting parameters.')
             dic_hodpars = self.get_params(self.constants, 'hod_'+self.cl_params['modHOD'])
             self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0_0=True, islogm1_0=True)
+
+        if self.corr_halo_mod:
+            logger.info('Correcting halo model Pk with HALOFIT ratio.')
+            self.rk_hm = self.HMCorr.rk_interp(self.k_arr, self.a_arr)
