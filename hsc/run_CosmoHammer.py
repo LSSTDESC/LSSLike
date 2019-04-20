@@ -203,16 +203,16 @@ cl_params = {'fitHOD': args.fitHOD,
 if args.fitNoise == 0:
     logger.info('Not fitting shot noise. Determining from noise sacc.')
 
-    fnames_saccs_noise = [os.path.splitext(fn)[0]+'_noise.sacc' for fn in args.saccfiles]
-    logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
-
     try:
+        fnames_saccs_noise = [os.path.splitext(fn)[0]+'_noise.sacc' for fn in args.saccfiles]
+        logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
         saccs_noise = [sacc.SACC.loadFromHDF(fn) for fn in fnames_saccs_noise]
         logger.info ("Loaded %i noise sacc files."%len(saccs))
-    except IOError:
+    except:
         fnames_saccs_noise = [os.path.join(os.path.split(fn)[0], 'noi_bias.sacc') for fn in args.saccfiles]
         logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
-        raise IOError("Need to provide noise saccs.")
+        saccs_noise = [sacc.SACC.loadFromHDF(fn) for fn in fnames_saccs_noise]
+        logger.info ("Loaded %i noise sacc files."%len(saccs))
 
     # Add precision matrix to noise saccs
     for i, s in enumerate(saccs):
