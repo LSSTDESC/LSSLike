@@ -206,13 +206,12 @@ if args.fitNoise == 0:
     fnames_saccs_noise = [os.path.splitext(fn)[0]+'_noise.sacc' for fn in args.saccfiles]
     logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
 
-    # New filenames
-    # fnames_saccs_noise = [os.path.join(os.path.split(fn)[0], 'noi_bias.sacc') for fn in args.saccfiles]
-    # logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
     try:
         saccs_noise = [sacc.SACC.loadFromHDF(fn) for fn in fnames_saccs_noise]
         logger.info ("Loaded %i noise sacc files."%len(saccs))
     except IOError:
+        fnames_saccs_noise = [os.path.join(os.path.split(fn)[0], 'noi_bias.sacc') for fn in args.saccfiles]
+        logger.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
         raise IOError("Need to provide noise saccs.")
 
     # Add precision matrix to noise saccs

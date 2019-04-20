@@ -64,13 +64,16 @@ class HSCAnalyze:
         if noise is None:
             self.log.info('No shot noise parameter provided. Determining from noise sacc.')
 
-            fnames_saccs_noise = [os.path.splitext(fn)[0]+'_noise.sacc' for fn in fnames]
-            self.log.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
+            # self.log.info('Reading noise saccs {}.'.format(fnames_saccs_noise))
             try:
+                fnames_saccs_noise = [os.path.splitext(fn)[0]+'_noise.sacc' for fn in fnames]
                 self.saccs_noise = [sacc.SACC.loadFromHDF(fn) for fn in fnames_saccs_noise]
                 self.log.info ("Loaded %i noise sacc files."%len(self.saccs))
-            except IOError:
-                raise IOError("Noise = {}, need to provide noise saccs.".format(noise))
+            except:
+                fnames_saccs_noise = [os.path.split(fn)[0]+'/noi_bias.sacc' for fn in fnames]
+                self.saccs_noise = [sacc.SACC.loadFromHDF(fn) for fn in fnames_saccs_noise]
+                self.log.info ("Loaded %i noise sacc files."%len(self.saccs))
+                # raise IOError("Noise = {}, need to provide noise saccs.".format(noise))
 
             # Add precision matrix to noise saccs
             for i, s in enumerate(self.saccs):
