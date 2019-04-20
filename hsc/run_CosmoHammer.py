@@ -296,10 +296,19 @@ else:
                     }
 
 if args.fixHODParams == 1:
-    FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.4,
-                      'alpha_0_bin{}'.format(args.binNo): 1.0,
-                      'fc_0_bin{}'.format(args.binNo): 0.25
-                     }
+    if args.modHOD == 'bin':
+        FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.4,
+                          'alpha_0_bin{}'.format(args.binNo): 1.0,
+                          'fc_0_bin{}'.format(args.binNo): 0.25
+                         }
+    elif args.modHOD == 'zevol':
+        FID_HOD_PARAMS = {'sigm_0': 0.4,
+                          'sigm_1': 0.,
+                          'alpha_0': 1.0,
+                          'alpha_1': 0.,
+                          'fc_0': 0.25,
+                          'fc_1': 0.
+                         }
 
     # FID_HOD_PARAMS = {'sigm_0_bin{}'.format(args.binNo): 0.3,
     #               'alpha_0_bin{}'.format(args.binNo): 1.0,
