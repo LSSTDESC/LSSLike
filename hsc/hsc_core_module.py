@@ -37,6 +37,10 @@ class HSCCoreModule(object):
             logger.info('HMCorr provided. Correcting halo model.')
             self.corr_halo_mod = True
             self.HMCorr = HMCorr
+        else:
+            logger.info('Not correcting halo model.')
+            self.corr_halo_mod = False
+            self.HMCorr = None
 
     def __call__(self, ctx):
         """
