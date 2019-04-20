@@ -80,7 +80,7 @@ class HSCAnalyze:
                 self.saccs_noise[i].precision = s.precision
 
             if join_saccs:
-                self.saccs_noise = [sacc.coadd(self.saccs_noise, mode='area')]
+                self.saccs_noise = [sacc.coadd(self.saccs_noise)]
             if cull_cross:
                 for s in self.saccs_noise:
                     s.cullCross()
@@ -89,7 +89,7 @@ class HSCAnalyze:
             self.saccs_noise = None
 
         if join_saccs:
-            self.saccs=[sacc.coadd(self.saccs, mode='area')]
+            self.saccs=[sacc.coadd(self.saccs)]
         if cull_cross:
             for s in self.saccs:
                 s.cullCross()

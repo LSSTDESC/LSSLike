@@ -219,7 +219,7 @@ if args.fitNoise == 0:
         saccs_noise[i].precision = s.precision
 
     if args.joinSaccs == 1:
-        saccs_noise = [sacc.coadd(saccs_noise, mode='area')]
+        saccs_noise = [sacc.coadd(saccs_noise)]
     if args.cullCross == 1:
         for s in saccs_noise:
             s.cullCross()
@@ -231,7 +231,7 @@ else:
     saccs_noise = None
 
 if args.joinSaccs == 1:
-    saccs=[sacc.coadd(saccs, mode='area')]
+    saccs=[sacc.coadd(saccs)]
 if args.cullCross == 1:
     for s in saccs:
         s.cullCross()
