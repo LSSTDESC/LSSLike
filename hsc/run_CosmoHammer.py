@@ -21,19 +21,19 @@ logger = logging.getLogger(__name__)
 
 HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
                   'alpha_0', 'alpha_1', 'fc_0', 'fc_1']
-HOD_PARAM_MEANS = np.atleast_2d(np.array([10., 0., 0.4, 0.3, 12, 0.7, 13.5, 0.1, 1., 0.3, 0.25, -1.5]))
-HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 0.1, 0.1, 1., 0.1, 1., 0.1, 0.1, 0.1, 0.1, 0.1]))
-HOD_PARAM_MINS = np.atleast_2d(np.array([10., -1., 0.1, -1., 10, -1., 10., -1., 0.5, -1., 0.1, -3.]))
-HOD_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 1., 1., 15., 1., 15., 1., 1.5, 1., 1., 0.]))
+HOD_PARAM_MEANS = np.atleast_2d(np.array([4., 10., 0.4, 0.3, -2., 13., 7., 10., 1., 0.3, 0.25, -1.5]))
+HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 1., 0.1, 0.1, 1., 1., 1., 1., 0.1, 0.1, 0.1, 0.1]))
+HOD_PARAM_MINS = np.atleast_2d(np.array([-5., 0., 0.1, -1., -5, 0., 0., -5., 0.5, -1., 0.1, -3.]))
+HOD_PARAM_MAXS = np.atleast_2d(np.array([10., 15., 1., 1., 10., 15., 15., 10., 1.5, 1., 1., 0.]))
 
 def remove_fixed_hod_param_keys(fixHODParams):
 
     HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
                   'alpha_0', 'alpha_1', 'fc_0', 'fc_1']
-    HOD_PARAM_MEANS = np.atleast_2d(np.array([10., 0., 0.4, 0.3, 12, 0.7, 13.5, 0.1, 1., 0.3, 0.25, -1.5]))
-    HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 0.1, 0.1, 0.1, 1., 0.1, 1., 0.1, 0.1, 0.1, 0.1, 0.1]))
-    HOD_PARAM_MINS = np.atleast_2d(np.array([10., -1., 0.1, -1., 10, -1., 10., -1., 0.5, -1., 0.1, -3.]))
-    HOD_PARAM_MAXS = np.atleast_2d(np.array([15., 1., 1., 1., 15., 1., 15., 1., 1.5, 1., 1., 0.]))
+    HOD_PARAM_MEANS = np.atleast_2d(np.array([4., 10., 0.4, 0.3, -2., 13., 7., 10., 1., 0.3, 0.25, -1.5]))
+    HOD_PARAM_WIDTHS = np.atleast_2d(np.array([1., 1., 0.1, 0.1, 1., 1., 1., 1., 0.1, 0.1, 0.1, 0.1]))
+    HOD_PARAM_MINS = np.atleast_2d(np.array([-5., 0., 0.1, -1., -5, 0., 0., -5., 0.5, -1., 0.1, -3.]))
+    HOD_PARAM_MAXS = np.atleast_2d(np.array([10., 15., 1., 1., 10., 15., 15., 10., 1.5, 1., 1., 0.]))
 
     if fixHODParams is not None:
         for key in fixHODParams:

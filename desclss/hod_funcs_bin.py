@@ -5,7 +5,7 @@ import pyccl as ccl
 
 class HODParams(object):
 
-    def __init__(self, hodpars, islogm0_0=False, islogm1_0=False):
+    def __init__(self, hodpars, islogm0=False, islogm1=False):
 
         # self.log = logging.getLogger('HODParams')
         # self.log.setLevel(logging.INFO)
@@ -17,9 +17,9 @@ class HODParams(object):
         # self.log.propagate = False
 
         self.params = hodpars
-        if islogm0_0:
+        if islogm0:
             self.params['m0_0'] = 10**self.params['m0_0']
-        if islogm1_0:
+        if islogm1:
             self.params['m1_0'] = 10**self.params['m1_0']
         print('Parameters updated: hodpars = {}.'.format(hodpars))
 

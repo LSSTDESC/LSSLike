@@ -205,7 +205,7 @@ class HSCCoreModule(object):
 
         global hod_funcs
         if self.cl_params['modHOD'] == 'zevol':
-            from desclss import hod_funcs
+            from desclss import hod_funcs_evol_fit as hod_funcs
         elif self.cl_params['modHOD'] == 'bin':
             from desclss import hod_funcs_bin as hod_funcs
 
@@ -217,7 +217,7 @@ class HSCCoreModule(object):
         if self.cl_params['modHOD'] != None and self.cl_params['fitHOD'] == 0:
             logger.info('Using HOD for theory predictions but not fitting parameters.')
             dic_hodpars = self.get_params(self.constants, 'hod_'+self.cl_params['modHOD'])
-            self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0_0=True, islogm1_0=True)
+            self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
 
         if self.corr_halo_mod:
             logger.info('Correcting halo model Pk with HALOFIT ratio.')

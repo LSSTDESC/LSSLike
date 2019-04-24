@@ -5,7 +5,7 @@ import pyccl as ccl
 
 class HODParams(object):
 
-    def __init__(self, hodpars, islogm0_0=False, islogm1_0=False):
+    def __init__(self, hodpars, islogm0=False, islogm1=False):
 
         # self.log = logging.getLogger('HODParams')
         # self.log.setLevel(logging.INFO)
@@ -17,10 +17,8 @@ class HODParams(object):
         # self.log.propagate = False
 
         self.params = hodpars
-        if islogm0_0:
-            self.params['m0_0'] = 10**self.params['m0_0']
-        if islogm1_0:
-            self.params['m1_0'] = 10**self.params['m1_0']
+        self.islogm0 = islogm0
+        self.islogm1 = islogm1
         print('Parameters updated: hodpars = {}.'.format(hodpars))
 
         return
@@ -37,11 +35,15 @@ class HODParams(object):
     def m0f(self, z) :
         # Returns M_0
         m0 = self.params['m0_0']*z + self.params['m0_1']
+        if self.islogm0:
+            m0 = 10**m0
         return m0
 
     def m1f(self, z) :
         #Returns M_1
         m1 = self.params['m1_0']*1/(1. + z) + self.params['m1_1']
+        if self.islogm1:
+            m1 = 10**m1
         return m1
 
     def alphaf(self, z) :
