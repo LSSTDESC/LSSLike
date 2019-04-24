@@ -16,8 +16,8 @@ from desclss import LSSTheory,LSSLikelihood
 import emcee as mc
 from ParamVec import ParamVec
 
-HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_alpha', 'sigm_0', 'sigm_alpha', 'm0_0', 'm0_alpha', 'm1_0', 'm1_alpha', \
-                  'alpha_0', 'alpha_alpha', 'fc_0', 'fc_alpha']
+HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
+                  'alpha_0', 'alpha_1', 'fc_0', 'fc_1']
 HOD_PARAM_MINS = np.array([9., -1., 0., -1., 10**6.5, -1., 10**11.5, -1., 0., -1., 0., -2.])
 HOD_PARAM_MAXS = np.array([15., 1., 0.8, 1., 10**13., 1., 10**17., 1., 2., 1., 1., 0.])
 
@@ -40,7 +40,7 @@ class HSCAnalyze:
                  log=logging.DEBUG,
                  hod=0,
                  fitHOD=0,
-                 hodpars=None):
+                 hodpars=None, corr_halo_mod=True):
 
         assert join_saccs, 'Shot noise currently only supports coadded saccs.'
 
@@ -123,7 +123,7 @@ class HSCAnalyze:
         self.setParametes(fitOc,Oc,fits8,s8,fith0,h0,fitBias,BiasMod,zbias,bias,fitNoise,noise,fitPZShifts,pzshifts, \
                           hod, fitHOD, hodpars)
             
-        self.lts=[LSSTheory(s, hod=hod, fitHOD=fitHOD, hodpars=hodpars) for s in self.saccs]
+        self.lts=[LSSTheory(s, hod=hod, fitHOD=fitHOD, hodpars=hodpars, corr_halo_mod=corr_halo_mod) for s in self.saccs]
         self.lks=[LSSLikelihood(s) for s in self.saccs]
 
         self.dofs = self.ncls - len(self.P)
@@ -278,15 +278,16 @@ class HSCAnalyze:
         h0=P.value('h0') if self.fith0 else self.h0
 
         dic={'Omega_c':oc,
-         'Omega_b':0.0486,
-         'Omega_k':0.0,
-         'Omega_nu':0.001436176,
-         'h0':h0,
-         'n_s':0.96,
-         'sigma_8':s8,
-         'transfer_function':'boltzmann_class',
-         'matter_power_spectrum':'halofit',
-         'has_rsd':False,'has_magnification':None}
+             'Omega_b': 0.0493,
+             'Omega_k': 0.0,
+             'sigma8': 0.8111,
+             'h': 0.6736,
+             'n_s': 0.9649,
+             'transfer_function': 'boltzmann_class',
+             'matter_power_spectrum': 'halofit',
+             'has_rsd':False,
+             'has_magnification':None
+            }
 
         if self.fitBias:
             if self.BiasMod == 'bz':
@@ -338,16 +339,18 @@ class HSCAnalyze:
         oc=P.value('Oc') if self.fitOc else self.Oc
         s8=P.value('s8') if self.fits8 else self.s8
         h0=P.value('h0') if self.fith0 else self.h0
+
         dic={'Omega_c':oc,
-         'Omega_b':0.0486,
-         'Omega_k':0.0,
-         'Omega_nu':0.001436176,
-         'h0':h0,
-         'n_s':0.96,
-         'sigma_8':s8,
-         'transfer_function':'boltzmann_class',
-         'matter_power_spectrum':'halofit',
-         'has_rsd':False,'has_magnification':None}
+             'Omega_b': 0.0493,
+             'Omega_k': 0.0,
+             'sigma8': 0.8111,
+             'h': 0.6736,
+             'n_s': 0.9649,
+             'transfer_function': 'boltzmann_class',
+             'matter_power_spectrum': 'halofit',
+             'has_rsd':False,
+             'has_magnification':None
+            }
 
         if self.fitBias:
             if self.BiasMod == 'bz':
@@ -383,6 +386,73 @@ class HSCAnalyze:
         cls=[lt.get_noSN_prediction(dic) for lt in self.lts]
 
         return cls
+
+    def predict1h_2hTheory(self,p):
+        P=self.P.clone()
+        P.setValues(p)
+        oc=P.value('Oc') if self.fitOc else self.Oc
+        s8=P.value('s8') if self.fits8 else self.s8
+        h0=P.value('h0') if self.fith0 else self.h0
+
+        dic={'Omega_c':oc,
+             'Omega_b': 0.0493,
+             'Omega_k': 0.0,
+             'sigma8': 0.8111,
+             'h': 0.6736,
+             'n_s': 0.9649,
+             'transfer_function': 'boltzmann_class',
+             'matter_power_spectrum': 'halofit',
+             'has_rsd':False,
+             'has_magnification':None
+            }
+
+        if self.fitBias:
+            if self.BiasMod == 'bz':
+                dic.update({'hscgals_z_b':self.zbias,
+                            'hscgals_b_b':[P.value('b_%2.1f'%z) for z in self.zbias]})
+            elif self.BiasMod == 'const':
+                for i in range(self.Ntomo):
+                    dic['hscgals_b_bin%i'%i] = P.value('b_bin%i'%i)
+            else:
+                raise ValueError('BiasMod needs to be set and bias parameters need to be provided.')
+        else:
+            if self.BiasMod == 'bz':
+                dic.update({'hscgals_z_b':self.zbias,
+                            'hscgals_b_b':self.bias})
+            elif self.BiasMod == 'const':
+                for i in range(self.Ntomo):
+                    dic['hscgals_b_bin%i'%i] = self.bias[i]
+            else:
+                raise ValueError('BiasMod needs to be set and bias parameters need to be provided.')
+
+        if self.fitPZShifts:
+            for i in range(self.Ntomo):
+                dic['zshift_bin%i'%i]=P.value('s_%i'%i)
+
+        if self.hod == 1:
+            if self.fitHOD == 1:
+                for i, key in enumerate(HOD_PARAM_KEYS):
+                    dic['{}'.format(key)]= P.value('{}'.format(key))
+            else:
+                for i, key in enumerate(HOD_PARAM_KEYS):
+                    dic['{}'.format(key)]= self.hodpars['{}'.format(key)]
+
+        cls_1h = [0 for lt in self.lts]
+        cls_2h = [0 for lt in self.lts]
+        b = [0 for lt in self.lts]
+        for i, lt in enumerate(self.lts):
+            if self.fitNoise:
+                for ii in range(self.Ntomo):
+                    dic['Pw_bin%i'%ii]=P.value('Pw_%i'%ii)*1e-8
+            else:
+                for ii in range(self.Ntomo):
+                    dic['Pw_bin%i'%ii]=self.noise[ii]*1e-8
+            cls_1h_temp, cls_2h_temp, b_temp = lt.get_1h_2h_prediction(dic)
+            cls_1h[i] = cls_1h_temp
+            cls_2h[i] = cls_2h_temp
+            b[i] = b_temp
+
+        return cls_1h, cls_2h, b
     
     #Define log(p). This is just a wrapper around the LSSLikelihood lk
     def logprobs(self,p):

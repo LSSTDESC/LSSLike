@@ -68,7 +68,7 @@ class HSCCoreModule(object):
 
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
                     dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'])
-                    self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0_0=True, islogm1_0=True)
+                    self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
 
                 if self.cl_params['modHOD'] == 'zevol':
                     hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
@@ -94,7 +94,7 @@ class HSCCoreModule(object):
 
                     elif self.cl_params['modHOD'] == 'bin':
                         dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'], i1)
-                        self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0_0=True, islogm1_0=True)
+                        self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
                         hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
                                                      self.hodpars.m1f, self.hodpars.alphaf)
                         # Compute HOD Pk
