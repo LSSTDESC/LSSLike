@@ -3,6 +3,7 @@ import pyccl as ccl
 import logging
 from scipy.interpolate import interp1d
 from . import hod
+# from . import hod_funcs_evol_fit as hod_funcs
 from . import hod_funcs
 
 HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
@@ -45,6 +46,7 @@ class LSSTheory(object):
             self.log.info('Using HOD for theoretical predictions.')
             assert hodpars is not None, 'Using HOD for theoretical predictions but no HOD parameter values supplied. Aborting.'
             dic_hodpars = dict(zip(HOD_PARAM_KEYS, hodpars))
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
             self.hodpars = hod_funcs.HODParams(dic_hodpars)
             # Provide a, k grids
             self.k_arr = np.logspace(-4.3, 3, 1000)
@@ -142,6 +144,7 @@ class LSSTheory(object):
             dic_hodpars = {}
             for key in HOD_PARAM_KEYS:
                 dic_hodpars[key] = dic_par[key]
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
             self.hodpars = hod_funcs.HODParams(dic_hodpars)
 
         if self.hod == 1:
@@ -180,6 +183,7 @@ class LSSTheory(object):
             dic_hodpars = {}
             for key in HOD_PARAM_KEYS:
                 dic_hodpars[key] = dic_par[key]
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
             self.hodpars = hod_funcs.HODParams(dic_hodpars)
 
         if self.hod == 1:
@@ -219,6 +223,7 @@ class LSSTheory(object):
             dic_hodpars = {}
             for key in HOD_PARAM_KEYS:
                 dic_hodpars[key] = dic_par[key]
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
             self.hodpars = hod_funcs.HODParams(dic_hodpars)
 
         if self.hod == 1:
