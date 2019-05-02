@@ -12,12 +12,14 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+COSMO_PARAM_KEYS = ['Omega_b', 'Omega_k', 'sigma8', 'h', 'n_s', 'Omega_c']
+
 class HSCCoreModule(object):
     """
     Core Module for calculating HSC clustering cls.
     """
 
-    def __init__(self, PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, fid_cosmo_params=None, HMCorr=None):
+    def __init__(self, PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, HMCorr=None):
         """
         Constructor of the HSCCoreModule
         """
@@ -30,9 +32,13 @@ class HSCCoreModule(object):
         self.lmax = self.saccs[0].binning.windows[0].w.shape[0]
         self.ells = np.arange(self.lmax)
 
-        if fid_cosmo_params is not None:
-            logger.info('Fiducial cosmological parameters provided. Fixing cosmology to fiducial values.')
-            self.cosmo = ccl.Cosmology(**fid_cosmo_params)
+        if set(COSMO_PARAM_KEYS) <= set(DEFAULT_PARAMS.viewkeys()):
+            FID_COSMO_PARAMS = {}
+            for key in COSMO_PARAM_KEYS:
+                FID_COSMO_PARAMS[key] = DEFAULT_PARAMS[key]
+            logger.info('Not varying cosmological parameters. Fixing cosmology to fiducial values = {}.'.format(FID_COSMO_PARAMS))
+            self.cosmo = ccl.Cosmology(**FID_COSMO_PARAMS)
+
         if HMCorr is not None:
             logger.info('HMCorr provided. Correcting halo model.')
             self.corr_halo_mod = True
@@ -44,7 +50,7 @@ class HSCCoreModule(object):
 
     def __call__(self, ctx):
         """
-        Computes something and stores it in the context
+        Compute theoretical prediction for clustering power spectra and store in the context.
         """
         # Get the parameters from the context
         p = ctx.getParams()
@@ -53,7 +59,6 @@ class HSCCoreModule(object):
         for k,v in self.mapping.items():
             params[k] = p[v]
 
-        # Calculate something
         cl_theory = [np.zeros((s.size(),)) for s in self.saccs]
 
         cosmo_params = self.get_params(params, 'cosmo')
@@ -173,8 +178,8 @@ class HSCCoreModule(object):
         tr_out = []
         for (tr_index, thistracer) in enumerate(sacc.tracers) :
             if thistracer.type.__contains__('point'):
-                if 'b_bin' + str(tr_index) in params:
-                    b_b = params['b_bin' + str(tr_index)]
+                if 'b_bin{}'.format(tr_index) in params:
+                    b_b = params['b_bin{}'.format(tr_index)]
                     z_b_arr = thistracer.z
                     b_b_arr = b_b*np.ones_like(z_b_arr)
                 elif 'z_b' in params:
@@ -185,12 +190,12 @@ class HSCCoreModule(object):
                 else:
                     raise ValueError("bias needed for each tracer")
 
-                if 'zshift_bin' + str(tr_index) in params:
-                    zbins = thistracer.z + params['zshift_bin' + str(tr_index)]
+                if 'zshift_bin{}'.format(tr_index) in params:
+                    zbins = thistracer.z + params['zshift_bin{}'.format(tr_index)]
                 else:
                     zbins = thistracer.z
 
-                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins, thistracer.Nz), \
+                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], thistracer.Nz[zbins>=0.]), \
                                                      bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification']))
             else :
                 raise ValueError("Only \"point\" tracers supported")
