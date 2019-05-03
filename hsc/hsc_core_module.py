@@ -117,7 +117,10 @@ class HSCCoreModule(object):
                         raise NotImplementedError()
 
                     # Extrapolate at high ell
-                    cls[lmax_this+1:]=cls[lmax_this]*(cls[lmax_this]/cls[lmax_this-1])**(self.ells[lmax_this+1:]-lmax_this)
+                    cls_ratio = cls[lmax_this]/cls[lmax_this-1]
+                    if cls_ratio >= 1.:
+                        cls_ratio = 0.999
+                    cls[lmax_this+1:]=cls[lmax_this]*(cls_ratio)**(self.ells[lmax_this+1:]-lmax_this)
 
                     cls_conv = np.zeros(ndx.shape[0])
                     # Convolve with windows
