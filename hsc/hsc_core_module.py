@@ -33,9 +33,7 @@ class HSCCoreModule(object):
         self.ells = np.arange(self.lmax)
 
         if set(COSMO_PARAM_KEYS) <= set(DEFAULT_PARAMS.viewkeys()):
-            FID_COSMO_PARAMS = {}
-            for key in COSMO_PARAM_KEYS:
-                FID_COSMO_PARAMS[key] = DEFAULT_PARAMS[key]
+            FID_COSMO_PARAMS = self.get_params(DEFAULT_PARAMS, 'cosmo')
             logger.info('Not varying cosmological parameters. Fixing cosmology to fiducial values = {}.'.format(FID_COSMO_PARAMS))
             self.cosmo = ccl.Cosmology(**FID_COSMO_PARAMS)
 
