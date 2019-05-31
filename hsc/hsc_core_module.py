@@ -67,7 +67,7 @@ class HSCCoreModule(object):
             else:
                 cosmo = self.cosmo
             for i, s in enumerate(self.saccs):
-                tracers = self.get_tracers(s, cosmo, params)
+                tracers = self.get_tracers(s, cosmo, params, self.cl_params)
 
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
                     dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'])
@@ -171,7 +171,7 @@ class HSCCoreModule(object):
 
         return params_subset
 
-    def get_tracers(self, sacc, cosmo, params):
+    def get_tracers(self, sacc, cosmo, params, cl_params):
 
         if 'z_b' in params:
             b_b = np.array([params['b_%2.1f'%z] for z in params['z_b']])
@@ -196,7 +196,12 @@ class HSCCoreModule(object):
                 else:
                     zbins = thistracer.z
 
-                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], thistracer.Nz[zbins>=0.]), \
+                if 'pz_dist_method' in cl_params and cl_params['pz_dist_method'] != 'COSMOS30':
+                    Nz = thistracer.extra_cols[cl_params['pz_dist_method']]
+                else:
+                    Nz = thistracer.Nz
+
+                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), \
                                                      bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification']))
             else :
                 raise ValueError("Only \"point\" tracers supported")
