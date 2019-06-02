@@ -196,8 +196,11 @@ class HSCCoreModule(object):
                 else:
                     zbins = thistracer.z
 
-                if 'pzMethod' in cl_params and cl_params['pzMethod'] != 'COSMOS30':
-                    Nz = thistracer.extra_cols[cl_params['pzMethod']]
+                if 'pzMethod' in cl_params:
+                    if cl_params['pzMethod'] != 'COSMOS30':
+                        Nz = thistracer.extra_cols[cl_params['pzMethod']]
+                    else:
+                        Nz = thistracer.Nz
                 else:
                     Nz = thistracer.Nz
 
