@@ -201,18 +201,18 @@ for key in fit_params.keys():
     param_mapping[key] = fit_params[key][0]
     params[fit_params[key][0], :] = fit_params[key][1:]
 
-if set(BIAS_PARAM_BZ_KEYS) <= set(param_mapping.viewkeys()):
+if set(BIAS_PARAM_BZ_KEYS) <= set(param_mapping.keys()):
     logger.info('Fitting for galaxy bias with model = bz.')
     config['default_params']['z_b'] = z_b
 
-elif set(BIAS_PARAM_CONST_KEYS) <= set(param_mapping.viewkeys()):
+elif set(BIAS_PARAM_CONST_KEYS) <= set(param_mapping.keys()):
     logger.info('Fitting for galaxy bias with model = const.')
 
 else:
     assert 'bg' in cl_params, 'Not fitting for galaxy bias but no fiducial values provided. Aborting.'
     logger.info('Not fitting for galaxy bias.')
     config['default_params'].update(cl_params['bg'])
-    if set(BIAS_PARAM_BZ_KEYS) <= set(cl_params['bg'].viewkeys()):
+    if set(BIAS_PARAM_BZ_KEYS) <= set(cl_params['bg'].keys()):
         logger.info('Galaxy bias model = bz.')
         config['default_params']['z_b'] = z_b
 

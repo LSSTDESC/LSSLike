@@ -32,7 +32,7 @@ class HSCCoreModule(object):
         self.lmax = self.saccs[0].binning.windows[0].w.shape[0]
         self.ells = np.arange(self.lmax)
 
-        if set(COSMO_PARAM_KEYS) <= set(DEFAULT_PARAMS.viewkeys()):
+        if set(COSMO_PARAM_KEYS) <= set(DEFAULT_PARAMS.keys()):
             FID_COSMO_PARAMS = self.get_params(DEFAULT_PARAMS, 'cosmo')
             logger.info('Not varying cosmological parameters. Fixing cosmology to fiducial values = {}.'.format(FID_COSMO_PARAMS))
             self.cosmo = ccl.Cosmology(**FID_COSMO_PARAMS)
@@ -62,7 +62,7 @@ class HSCCoreModule(object):
         cosmo_params = self.get_params(params, 'cosmo')
 
         try:
-            if (cosmo_params.viewkeys() & self.mapping.viewkeys()) != set([]):
+            if (cosmo_params.keys() & self.mapping.keys()) != set([]):
                 cosmo = ccl.Cosmology(**cosmo_params)
             else:
                 cosmo = self.cosmo
