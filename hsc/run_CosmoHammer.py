@@ -272,5 +272,6 @@ else:
                     sampleIterations=ch_config_params['sampleIterations'],
                     initPositionGenerator=InitializeFromChain(ch_config_params['path2rerunchain'], fraction = 0.8))
 
+#sys.exit()
 sampler.startSampling()
 

@@ -18,12 +18,10 @@ class HSCCoreModule(object):
     """
     Core Module for calculating HSC clustering cls.
     """
-
     def __init__(self, PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, HMCorr=None):
         """
         Constructor of the HSCCoreModule
         """
-
         self.mapping = PARAM_MAPPING
         self.constants = DEFAULT_PARAMS
         self.cl_params = cl_params
@@ -45,6 +43,20 @@ class HSCCoreModule(object):
             logger.info('Not correcting halo model.')
             self.corr_halo_mod = False
             self.HMCorr = None
+            
+        #print(PARAM_MAPPING)
+        self.z_c = {}
+        for isacc, s in enumerate(self.saccs):
+            self.z_c[isacc] = {}
+            for (tr_index, thistracer) in enumerate(s.tracers) :
+                if 'zwidth_bin{}'.format(tr_index) in PARAM_MAPPING:
+                    bin_max = thistracer.Nz.max()
+                    imax = np.where(thistracer.Nz == bin_max)
+                    self.z_c[isacc]['zwidth_bin{}'.format(tr_index)] = thistracer.z[imax[0][0]]
+                    #print(thistracer.z[imax[0][0]])
+        #print(self.z_c)
+            
+        
 
     def __call__(self, ctx):
         """
@@ -52,7 +64,7 @@ class HSCCoreModule(object):
         """
         # Get the parameters from the context
         p = ctx.getParams()
-
+        
         params = self.constants.copy()
         for k,v in self.mapping.items():
             params[k] = p[v]
@@ -66,9 +78,9 @@ class HSCCoreModule(object):
                 cosmo = ccl.Cosmology(**cosmo_params)
             else:
                 cosmo = self.cosmo
+            print( self.z_c )
             for i, s in enumerate(self.saccs):
-                tracers = self.get_tracers(s, cosmo, params, self.cl_params)
-
+                tracers = self.get_tracers(s, cosmo, params, self.cl_params, i)
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
                     dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'])
                     self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
@@ -171,8 +183,8 @@ class HSCCoreModule(object):
 
         return params_subset
 
-    def get_tracers(self, sacc, cosmo, params, cl_params):
-
+    def get_tracers(self, sacc, cosmo, params, cl_params, isacc):
+        #print("get tracers")
         if 'z_b' in params:
             b_b = np.array([params['b_%2.1f'%z] for z in params['z_b']])
 
@@ -190,8 +202,13 @@ class HSCCoreModule(object):
                     b_b_arr = bf(z_b_arr) #Assuming that tracers have this attribute
                 else:
                     raise ValueError("bias needed for each tracer")
-
-                if 'zshift_bin{}'.format(tr_index) in params:
+   
+                if ('zshift_bin{}'.format(tr_index) in params) and ('zwidth_bin{}'.format(tr_index) in params):
+                    #print("zwidth called")
+                    zbins = (thistracer.z+self.z_c[isacc]['zwidth_bin{}'.format(tr_index)])*(1+params['zwidth_bin{}'.format(tr_index)])+ \
+                                                params['zshift_bin{}'.format(tr_index)] + self.z_c[isacc]['zwidth_bin{}'.format(tr_index)]
+                    
+                elif 'zshift_bin{}'.format(tr_index) in params:
                     zbins = thistracer.z + params['zshift_bin{}'.format(tr_index)]
                 else:
                     zbins = thistracer.z

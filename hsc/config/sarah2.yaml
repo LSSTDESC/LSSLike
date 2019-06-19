@@ -1,6 +1,7 @@
 # Comment out the probes you don't need
 # CAREFUL: yaml is super sensitive to spaces - don't use tabs
-saccfiles: ['/home/sssm8d/HSC_data/global/WIDE_GAMA15H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_GAMA09H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_WIDE12H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_VVDS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_XMMLSS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc']
+saccfiles: ['/home/sssm8d/HSC_data/global/WIDE_GAMA15H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc']
+#, '/home/sssm8d/HSC_data/global/WIDE_GAMA09H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_WIDE12H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_VVDS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_XMMLSS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc']
 
 
 cl_params:
@@ -36,7 +37,10 @@ fit_params:
     m0_1: [7, 13., 0., 15., 0.5]
     m1_0: [8, 7., -5., 10., 0.5]
     m1_1: [9, 10., 0., 15., 0.5]
-    # zwidth_bin0: [10, ...
+    zwidth_bin0: [10, 0.0, -0.2, 0.2, 0.01]
+    zwidth_bin1: [11, 0.0, -0.2, 0.2, 0.01]
+    zwidth_bin2: [12, 0.0, -0.2, 0.2, 0.01]
+    zwidth_bin3: [13, 0.0, -0.2, 0.2, 0.01]
 
 default_params:
     has_rsd: False
@@ -58,10 +62,10 @@ default_params:
 
 # Configuration parameters for cosmohammer
 ch_config_params:
-    path2output: /home/sssm8d/HSC_analysis/sarah3/run_output
-    chainsPrefix: sarah3
+    path2output: /home/sssm8d/HSC_analysis/sarah4/run_output
+    chainsPrefix: sarah4
     use_mpi: 0
     rerun: 0
     walkersRatio: 8
-    burninIterations: 100
-    sampleIterations: 100
+    burninIterations: 1
+    sampleIterations: 1
