@@ -62,8 +62,8 @@ default_params:
 
 # Configuration parameters for cosmohammer
 ch_config_params:
-    path2output: /home/sssm8d/HSC_analysis/sarah4/run_output
-    chainsPrefix: sarah4
+    path2output: /home/sssm8d/HSC_analysis/sarah5/run_output
+    chainsPrefix: sarah5
     use_mpi: 0
     rerun: 0
     walkersRatio: 8

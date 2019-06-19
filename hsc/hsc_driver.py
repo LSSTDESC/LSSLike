@@ -309,7 +309,7 @@ class HSCAnalyze:
                 raise ValueError('BiasMod needs to be set and bias parameters need to be provided.')
         
         if self.fitPZShifts:
-            print('test: predictTheory')
+            #print('test: predictTheory')
             for i in range(self.Ntomo):
                 dic['zshift_bin%i'%i]=P.value('s_%i'%i)
 
@@ -373,7 +373,7 @@ class HSCAnalyze:
                 raise ValueError('BiasMod needs to be set and bias parameters need to be provided.')
 
         if self.fitPZShifts:
-            print('test: predictNoSNTheory')
+            #print('test: predictNoSNTheory')
             for i in range(self.Ntomo):
                 dic['zshift_bin%i'%i]=P.value('s_%i'%i)
 
@@ -428,7 +428,7 @@ class HSCAnalyze:
                 raise ValueError('BiasMod needs to be set and bias parameters need to be provided.')
 
         if self.fitPZShifts:
-            print('test: predict1h_2hTheory')
+            #print('test: predict1h_2hTheory')
             for i in range(self.Ntomo):
                 dic['zshift_bin%i'%i]=P.value('s_%i'%i)
 

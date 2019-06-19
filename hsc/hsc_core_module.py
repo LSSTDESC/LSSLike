@@ -78,7 +78,7 @@ class HSCCoreModule(object):
                 cosmo = ccl.Cosmology(**cosmo_params)
             else:
                 cosmo = self.cosmo
-            print( self.z_c )
+            #print( self.z_c )
             for i, s in enumerate(self.saccs):
                 tracers = self.get_tracers(s, cosmo, params, self.cl_params, i)
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
