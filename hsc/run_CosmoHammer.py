@@ -13,6 +13,7 @@ from hsc_core_module import HSCCoreModule
 from InitializeFromChain import InitializeFromChain
 from desclss.halo_mod_corr import HaloModCorrection
 import yaml
+import time
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -92,8 +93,10 @@ def kmax2lmax(kmax, zeff, cosmo=None):
 parser = argparse.ArgumentParser(description='Calculate HSC clustering cls.')
 
 parser.add_argument('--path2config', dest='path2config', type=str, help='Path to config file.', required=True)
+parser.add_argument('--time-likelihood', dest='time_likelihood',  help='Times the likelihood calculations', action='store_true')
 
 args = parser.parse_args()
+#print("Likelihood argument:", args.time_likelihood)
 
 logger.info('Read args = {} from command line.'.format(args))
 
@@ -219,7 +222,10 @@ else:
     else:
         logger.info('Galaxy bias model = const.')
 
+
+       
 # Set up CosmoHammer
+
 chain = LikelihoodComputationChain(
                     min=params[:, 1],
                     max=params[:, 2])
@@ -228,47 +234,82 @@ chain.addCoreModule(HSCCoreModule(param_mapping, config['default_params'], cl_pa
 
 chain.addLikelihoodModule(HSCLikeModule(saccs))
 
+
 chain.setup()
-
-if ch_config_params['use_mpi'] == 0:
-    if ch_config_params['rerun'] == 0:
-        sampler = CosmoHammerSampler(
-                    params= params,
-                    likelihoodComputationChain=chain,
-                    filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
-                    walkersRatio=ch_config_params['walkersRatio'],
-                    burninIterations=ch_config_params['burninIterations'],
-                    sampleIterations=ch_config_params['sampleIterations'])
-    else:
-        assert ch_config_params['path2rerunchain'] is not None, 'rerun is {}, but path to rerun chains not set. Aborting.'.format(ch_config_params['rerun'])
-        path2chain = args.path2rerunchain
-        sampler = CosmoHammerSampler(
-                    params= params,
-                    likelihoodComputationChain=chain,
-                    filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
-                    walkersRatio=ch_config_params['walkersRatio'],
-                    burninIterations=ch_config_params['burninIterations'],
-                    sampleIterations=ch_config_params['sampleIterations'],
-                    initPositionGenerator=InitializeFromChain(ch_config_params['path2rerunchain'], fraction = 0.8))
+if args.time_likelihood:
+    print('   ==================================================')
+    print("   | Calculating time of LikelihoodComputationChain |")
+    print('   | number of core modules:   ', len(chain.getCoreModules()) ,'        |')
+    print('   | number of like modules:   ', len(chain.getLikelihoodModules()),'        |')
+    print('   ==================================================')
+    #context = chain.createChainContext(params[:,0]+params[:, 3])
+    #chain.invokeCoreModules(context)
+    #like = chain.computeLikelihoods(context)
+    timing = {}
+    for i in range(0,10):
+        start = time.time()
+        if i<5:
+            chain(params[:, 0]+i*params[:, 3])
+        else:
+            chain(params[:, 0]-(i-4)*params[:, 3])
+        finish = time.time()
+        timing[i] = finish-start
+        #print(i, timing)
+    mean = 0
+    for i in range(0,10):
+        mean = mean + timing[i]
+    mean = mean/10.0
+    print('============================================================================')
+    print('mean computation time of LikelihoodComputationChain: ', mean)
+    variance = 0.0
+    for i in range(0,10):
+        variance = variance + (timing[i]-mean)*(timing[i]-mean)
+    variance = variance/10.0
+    variance = np.sqrt(variance)
+    print('variance of computation time of LikelihoodComputationChain: ', variance)
+    print('============================================================================')
+    
 else:
-    if ch_config_params['rerun'] == 0:
-        sampler = MpiCosmoHammerSampler(
-                    params= params,
-                    likelihoodComputationChain=chain,
-                    filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
-                    walkersRatio=ch_config_params['walkersRatio'],
-                    burninIterations=ch_config_params['burninIterations'],
-                    sampleIterations=ch_config_params['sampleIterations'])
+    
+    if ch_config_params['use_mpi'] == 0:
+        if ch_config_params['rerun'] == 0:
+            sampler = CosmoHammerSampler(
+                        params= params,
+                        likelihoodComputationChain=chain,
+                        filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
+                        walkersRatio=ch_config_params['walkersRatio'],
+                        burninIterations=ch_config_params['burninIterations'],
+                        sampleIterations=ch_config_params['sampleIterations'])
+        else:
+            assert ch_config_params['path2rerunchain'] is not None, 'rerun is {}, but path to rerun chains not set. Aborting.'.format(ch_config_params['rerun'])
+            path2chain = args.path2rerunchain
+            sampler = CosmoHammerSampler(
+                        params= params,
+                        likelihoodComputationChain=chain,
+                        filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
+                        walkersRatio=ch_config_params['walkersRatio'],
+                        burninIterations=ch_config_params['burninIterations'],
+                        sampleIterations=ch_config_params['sampleIterations'],
+                        initPositionGenerator=InitializeFromChain(ch_config_params['path2rerunchain'], fraction = 0.8))
     else:
-        assert ch_config_params['path2rerunchain'] is not None, 'rerun is {}, but path to rerun chains not set. Aborting.'.format(ch_config_params['rerun'])
-        sampler = MpiCosmoHammerSampler(
-                    params= params,
-                    likelihoodComputationChain=chain,
-                    filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
-                    walkersRatio=ch_config_params['walkersRatio'],
-                    burninIterations=ch_config_params['burninIterations'],
-                    sampleIterations=ch_config_params['sampleIterations'],
-                    initPositionGenerator=InitializeFromChain(ch_config_params['path2rerunchain'], fraction = 0.8))
+        if ch_config_params['rerun'] == 0:
+            sampler = MpiCosmoHammerSampler(
+                        params= params,
+                        likelihoodComputationChain=chain,
+                        filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
+                        walkersRatio=ch_config_params['walkersRatio'],
+                        burninIterations=ch_config_params['burninIterations'],
+                        sampleIterations=ch_config_params['sampleIterations'])
+        else:
+            assert ch_config_params['path2rerunchain'] is not None, 'rerun is {}, but path to rerun chains not set. Aborting.'.format(ch_config_params['rerun'])
+            sampler = MpiCosmoHammerSampler(
+                        params= params,
+                        likelihoodComputationChain=chain,
+                        filePrefix=os.path.join(ch_config_params['path2output'], ch_config_params['chainsPrefix']),
+                        walkersRatio=ch_config_params['walkersRatio'],
+                        burninIterations=ch_config_params['burninIterations'],
+                        sampleIterations=ch_config_params['sampleIterations'],
+                        initPositionGenerator=InitializeFromChain(ch_config_params['path2rerunchain'], fraction = 0.8))
 
-sampler.startSampling()
+    sampler.startSampling()
 
