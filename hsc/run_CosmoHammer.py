@@ -239,19 +239,20 @@ chain.setup()
 if args.time_likelihood:
     print('   ==================================================')
     print("   | Calculating time of LikelihoodComputationChain |")
-    print('   | number of core modules:   ', len(chain.getCoreModules()) ,'        |')
-    print('   | number of like modules:   ', len(chain.getLikelihoodModules()),'        |')
-    print('   ==================================================')
+    print('   | number of core modules:   ', len(chain.getCoreModules()) ,'                  |')
+    print('   | number of like modules:   ', len(chain.getLikelihoodModules()),'                  |')
+    print('   ==================================================')  
     #context = chain.createChainContext(params[:,0]+params[:, 3])
     #chain.invokeCoreModules(context)
     #like = chain.computeLikelihoods(context)
     timing = {}
     for i in range(0,10):
+        print('Test ',i,' of 9')
         start = time.time()
         if i<5:
-            chain(params[:, 0]+i*params[:, 3])
+            chain(params[:, 0]+i*0.5*params[:, 3])
         else:
-            chain(params[:, 0]-(i-4)*params[:, 3])
+            chain(params[:, 0]-(i-4)*0.5*params[:, 3])
         finish = time.time()
         timing[i] = finish-start
         #print(i, timing)
@@ -259,6 +260,7 @@ if args.time_likelihood:
     for i in range(0,10):
         mean = mean + timing[i]
     mean = mean/10.0
+    #mean2 = np.mean(timing)
     print('============================================================================')
     print('mean computation time of LikelihoodComputationChain: ', mean)
     variance = 0.0
@@ -266,7 +268,8 @@ if args.time_likelihood:
         variance = variance + (timing[i]-mean)*(timing[i]-mean)
     variance = variance/10.0
     variance = np.sqrt(variance)
-    print('variance of computation time of LikelihoodComputationChain: ', variance)
+    #stdev = np.std(timing)
+    print('standard deviation of computation time of LikelihoodComputationChain: ', variance)
     print('============================================================================')
     
 else:
