@@ -242,34 +242,26 @@ if args.time_likelihood:
     print('   | number of core modules:   ', len(chain.getCoreModules()) ,'                  |')
     print('   | number of like modules:   ', len(chain.getLikelihoodModules()),'                  |')
     print('   ==================================================')  
-    #context = chain.createChainContext(params[:,0]+params[:, 3])
-    #chain.invokeCoreModules(context)
-    #like = chain.computeLikelihoods(context)
-    timing = {}
-    for i in range(0,10):
-        print('Test ',i,' of 9')
+    timing = np.zeros(10)
+    for i in range(-1,10):
+        if i==-1:
+            print('Burn test')
+        else:
+            print('Test ',i,' of 9')
         start = time.time()
         if i<5:
-            chain(params[:, 0]+i*0.5*params[:, 3])
+            chain(params[:, 0]+i*0.1*params[:, 3])
         else:
-            chain(params[:, 0]-(i-4)*0.5*params[:, 3])
+            chain(params[:, 0]-(i-4)*0.2*params[:, 3])
         finish = time.time()
-        timing[i] = finish-start
-        #print(i, timing)
-    mean = 0
-    for i in range(0,10):
-        mean = mean + timing[i]
-    mean = mean/10.0
-    #mean2 = np.mean(timing)
+        if i>-1:
+            timing[i] = finish-start
+
+    mean2 = np.mean(timing)
     print('============================================================================')
-    print('mean computation time of LikelihoodComputationChain: ', mean)
-    variance = 0.0
-    for i in range(0,10):
-        variance = variance + (timing[i]-mean)*(timing[i]-mean)
-    variance = variance/10.0
-    variance = np.sqrt(variance)
-    #stdev = np.std(timing)
-    print('standard deviation of computation time of LikelihoodComputationChain: ', variance)
+    print('mean computation time of LikelihoodComputationChain: ', mean2)
+    stdev = np.std(timing)
+    print('standard deviation of computation time of LikelihoodComputationChain: ', stdev)
     print('============================================================================')
     
 else:
