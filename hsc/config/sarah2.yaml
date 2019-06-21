@@ -1,6 +1,6 @@
 # Comment out the probes you don't need
 # CAREFUL: yaml is super sensitive to spaces - don't use tabs
-saccfiles: ['/home/sssm8d/HSC_data/global/WIDE_GAMA15H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc']
+saccfiles: ['/home/sssm8d/hsc/HSC_data/global/WIDE_GAMA15H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc']
 #, '/home/sssm8d/HSC_data/global/WIDE_GAMA09H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_WIDE12H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_VVDS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/HSC_data/global/WIDE_XMMLSS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc']
 
 
@@ -62,8 +62,8 @@ default_params:
 
 # Configuration parameters for cosmohammer
 ch_config_params:
-    path2output: /home/sssm8d/HSC_analysis/test_like/sarah6/run_output
-    chainsPrefix: sarah6testLike
+    path2output: /home/sssm8d/hsc/HSC_analysis/test_like/sarah7/run_output
+    chainsPrefix: sarah7testLike
     use_mpi: 0
     rerun: 0
     walkersRatio: 8
