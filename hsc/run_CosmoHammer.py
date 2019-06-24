@@ -150,7 +150,7 @@ if cl_params['fitNoise'] == 0:
     if sacc_params['singleBin'] == 1:
         assert sacc_params['binNo'] is not None, 'Single bin fit requested but bin number not specified. Aborting.'
         for s in saccs_noise:
-            s.selectTracer(args.binNo)
+            s.selectTracer(sacc_params['binNo'])
 else:
     saccs_noise = None
 
@@ -162,7 +162,7 @@ if sacc_params['cullCross'] == 1:
 if sacc_params['singleBin'] == 1:
     assert sacc_params['binNo'] is not None, 'Single bin fit requested but bin number not specified. Aborting.'
     for s in saccs:
-        s.selectTracer(args.binNo)
+        s.selectTracer(sacc_params['binNo'])
 
 Ntomo = len(saccs[0].tracers) ## number of tomo bins
 logger.info ("Ntomo bins: %i"%Ntomo)
