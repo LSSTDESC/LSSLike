@@ -205,7 +205,7 @@ class HSCCoreModule(object):
    
                 if ('zshift_bin{}'.format(tr_index) in params) and ('zwidth_bin{}'.format(tr_index) in params):
                     #print("zwidth called")
-                    zbins = (thistracer.z+self.z_c[isacc]['zwidth_bin{}'.format(tr_index)])*(1+params['zwidth_bin{}'.format(tr_index)])+ \
+                    zbins = (thistracer.z-self.z_c[isacc]['zwidth_bin{}'.format(tr_index)])*(1+params['zwidth_bin{}'.format(tr_index)])+ \
                                                 params['zshift_bin{}'.format(tr_index)] + self.z_c[isacc]['zwidth_bin{}'.format(tr_index)]
                     
                 elif 'zshift_bin{}'.format(tr_index) in params:
