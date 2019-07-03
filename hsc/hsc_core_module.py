@@ -44,8 +44,9 @@ class HSCCoreModule(object):
             self.corr_halo_mod = False
             self.HMCorr = None
             
-        #print(PARAM_MAPPING)
         self.z_c = {}
+        #print(len(self.saccs))
+        #print(self.saccs)
         for isacc, s in enumerate(self.saccs):
             self.z_c[isacc] = {}
             for (tr_index, thistracer) in enumerate(s.tracers) :
@@ -53,7 +54,6 @@ class HSCCoreModule(object):
                     bin_max = thistracer.Nz.max()
                     imax = np.where(thistracer.Nz == bin_max)
                     self.z_c[isacc]['zwidth_bin{}'.format(tr_index)] = thistracer.z[imax[0][0]]
-                    #print(thistracer.z[imax[0][0]])
         #print(self.z_c)
             
         
@@ -78,7 +78,6 @@ class HSCCoreModule(object):
                 cosmo = ccl.Cosmology(**cosmo_params)
             else:
                 cosmo = self.cosmo
-            #print( self.z_c )
             for i, s in enumerate(self.saccs):
                 tracers = self.get_tracers(s, cosmo, params, self.cl_params, i)
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
