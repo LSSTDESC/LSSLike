@@ -175,6 +175,14 @@ for i, s in enumerate(saccs_noise):
         binmask = (s.binning.binar['T1']==ii)&(s.binning.binar['T2']==ii)
         noise[i][ii] = s.mean.vector[binmask]
 
+if 'path2cov' in sacc_params:
+    logger.info('Covariance matrix provided. Setting precision matrix of saccs and saccs_noise to provided covariance matrix.')
+    for i in range(len(saccs)):
+        covmat = np.load(sacc_params['path2cov'][i])
+        logger.info('Read covariance matrix from {}.'.format(sacc_params['path2cov'][i]))
+        saccs[i].precision = np.linalg.inv(covmat)
+        saccs_noise[i].precision = np.linalg.inv(covmat)
+
 if cl_params['corrHM'] == 1:
     assert cl_params['modHOD'] is not None, 'Halo model correction requested but not using HOD for theory predictions. Aborting.'
 
