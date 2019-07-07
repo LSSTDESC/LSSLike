@@ -286,7 +286,9 @@ class HSCAnalyze:
              'transfer_function': 'boltzmann_class',
              'matter_power_spectrum': 'halofit',
              'has_rsd':False,
-             'has_magnification':None
+             'has_magnification':None,
+             'mass_function': 'tinker10',
+             # 'pzMethod': 'nz_frankenz'
             }
 
         if self.fitBias:
@@ -349,7 +351,9 @@ class HSCAnalyze:
              'transfer_function': 'boltzmann_class',
              'matter_power_spectrum': 'halofit',
              'has_rsd':False,
-             'has_magnification':None
+             'has_magnification':None,
+             'mass_function': 'tinker10',
+             # 'pzMethod': 'nz_frankenz'
             }
 
         if self.fitBias:
@@ -403,7 +407,9 @@ class HSCAnalyze:
              'transfer_function': 'boltzmann_class',
              'matter_power_spectrum': 'halofit',
              'has_rsd':False,
-             'has_magnification':None
+             'has_magnification':None,
+             'mass_function': 'tinker10',
+             # 'pzMethod': 'nz_frankenz'
             }
 
         if self.fitBias:

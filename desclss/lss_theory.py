@@ -3,8 +3,8 @@ import pyccl as ccl
 import logging
 from scipy.interpolate import interp1d
 from . import hod
-# from . import hod_funcs_evol_fit as hod_funcs
-from . import hod_funcs
+from . import hod_funcs_evol_fit as hod_funcs
+# from . import hod_funcs
 
 HOD_PARAM_KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
                   'alpha_0', 'alpha_1', 'fc_0', 'fc_1']
@@ -46,8 +46,8 @@ class LSSTheory(object):
             self.log.info('Using HOD for theoretical predictions.')
             assert hodpars is not None, 'Using HOD for theoretical predictions but no HOD parameter values supplied. Aborting.'
             dic_hodpars = dict(zip(HOD_PARAM_KEYS, hodpars))
-            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
-            self.hodpars = hod_funcs.HODParams(dic_hodpars)
+            self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars)
             # Provide a, k grids
             self.k_arr = np.logspace(-4.3, 3, 1000)
             self.z_arr = np.linspace(0., 3., 50)[::-1]
@@ -96,7 +96,16 @@ class LSSTheory(object):
                 else:
                     zbins = thistracer.z
 
-                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=dic_par['has_rsd'], dndz=(zbins, thistracer.Nz), \
+                if 'pzMethod' in dic_par:
+                    print(dic_par['pzMethod'])
+                    if dic_par['pzMethod'] != 'COSMOS30':
+                        Nz = thistracer.extra_cols[dic_par['pzMethod']]
+                    else:
+                        Nz = thistracer.Nz
+                else:
+                    Nz = thistracer.Nz
+
+                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=dic_par['has_rsd'], dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), \
                                                      bias=(z_b_arr, b_b_arr), mag_bias=dic_par['has_magnification']))
             else :
                 raise ValueError("Only \"point\" tracers supported")
@@ -123,13 +132,15 @@ class LSSTheory(object):
             A_s = dic_par['A_s']
             cosmo=ccl.Cosmology(Omega_c=Omega_c, Omega_b=Omega_b, Omega_k=Omega_k, w0=w, wa=wa, A_s=A_s, n_s=n_s, h=h0,
                                 transfer_function=dic_par['transfer_function'],
-                                matter_power_spectrum=dic_par['matter_power_spectrum'])
+                                matter_power_spectrum=dic_par['matter_power_spectrum'],
+                                mass_function=dic_par['mass_function'])
 
         else:
             sigma8=dic_par.get('sigma8',0.8)
             cosmo=ccl.Cosmology(Omega_c=Omega_c, Omega_b=Omega_b, Omega_k=Omega_k, w0=w, wa=wa, sigma8=sigma8, n_s=n_s, h=h0,
                                 transfer_function=dic_par['transfer_function'],
-                                matter_power_spectrum=dic_par['matter_power_spectrum'])
+                                matter_power_spectrum=dic_par['matter_power_spectrum'],
+                                mass_function=dic_par['mass_function'])
 
         self.log.info('CCL called with cosmology = {}.'.format(cosmo))
 
@@ -144,8 +155,8 @@ class LSSTheory(object):
             dic_hodpars = {}
             for key in HOD_PARAM_KEYS:
                 dic_hodpars[key] = dic_par[key]
-            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
-            self.hodpars = hod_funcs.HODParams(dic_hodpars)
+            self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars)
 
         if self.hod == 1:
             hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
@@ -183,8 +194,8 @@ class LSSTheory(object):
             dic_hodpars = {}
             for key in HOD_PARAM_KEYS:
                 dic_hodpars[key] = dic_par[key]
-            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
-            self.hodpars = hod_funcs.HODParams(dic_hodpars)
+            self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars)
 
         if self.hod == 1:
             hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
@@ -223,8 +234,8 @@ class LSSTheory(object):
             dic_hodpars = {}
             for key in HOD_PARAM_KEYS:
                 dic_hodpars[key] = dic_par[key]
-            # self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
-            self.hodpars = hod_funcs.HODParams(dic_hodpars)
+            self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
+            # self.hodpars = hod_funcs.HODParams(dic_hodpars)
 
         if self.hod == 1:
             hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
@@ -241,7 +252,7 @@ class LSSTheory(object):
             pk_hod_2h = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr_2h, is_logp=True)
             # Use default grids in Pk2D
             # pk_hod = ccl.Pk2D(pkfunc=hodprof.pk, is_logp=False)
-            _, _, _, _, b_hod = hodprof.pk(np.log(np.array([10**-12.])), 1., return_decomposed=True)
+            _, _, _, _, b_hod = hodprof.pk(np.log(np.array([10**-4.])), 1., return_decomposed=True)
 
         for i1,i2,_,ells,ndx in self.s.sortTracers() :
             self.log.info('hod = {}. Using HOD to compute theory predictions.'.format(self.hod))
