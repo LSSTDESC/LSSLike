@@ -180,8 +180,8 @@ if 'path2cov' in sacc_params.keys():
     for i in range(len(saccs)):
         covmat = np.load(sacc_params['path2cov'][i])
         logger.info('Read covariance matrix from {}.'.format(sacc_params['path2cov'][i]))
-        saccs[i].precision = np.linalg.inv(covmat)
-        saccs_noise[i].precision = np.linalg.inv(covmat)
+        saccs[i].precision = sacc.Precision(covmat, 'dense', is_covariance=True)
+        saccs_noise[i].precision = sacc.Precision(covmat, 'dense', is_covariance=True)
 
 if cl_params['corrHM'] == 1:
     assert cl_params['modHOD'] is not None, 'Halo model correction requested but not using HOD for theory predictions. Aborting.'
