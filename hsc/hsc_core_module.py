@@ -66,9 +66,10 @@ class HSCCoreModule(object):
                 cosmo = ccl.Cosmology(**cosmo_params)
             else:
                 cosmo = self.cosmo
+            
             for i, s in enumerate(self.saccs):
                 tracers = self.get_tracers(s, cosmo, params, self.cl_params)
-
+                #print("PROBLEM?")
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
                     dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'])
                     self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
@@ -204,9 +205,21 @@ class HSCCoreModule(object):
                 else:
                     Nz = thistracer.Nz
 
-                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), \
-                                                     bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification']))
-            else :
+                if (params['has_magnification'] is not None):
+                    mag_arr = np.ones( len(z_b_arr) )
+                    if 'mag_bias{}'.format(tr_index) in params:
+                        mag_arr = mag_arr*params['mag_bias{}'.format(tr_index)]
+                    else:
+                        mag_arr = mag_arr*params['has_magnification']
+                    tr_out.append( ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], 
+                                                      dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), 
+                                                     bias=(z_b_arr, b_b_arr), mag_bias=(z_b_arr, mag_arr)) )
+                else:
+                    tr_out.append( ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], 
+                                                      dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), 
+                                                     bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification'] )
+              
+            else:
                 raise ValueError("Only \"point\" tracers supported")
 
         return tr_out
