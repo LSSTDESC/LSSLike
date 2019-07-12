@@ -196,13 +196,21 @@ else:
 # April Likelihood setup and call #
 ###################################
 L=April_hsc_Like(HSCCoreModule(param_mapping, config['default_params'], cl_params, saccs, noise, HMCorr=HMCorr), HSCLikeModule(saccs), params)
+
+#############################################################
+# consequence of --test-likelihood argument on command line #
+# calculates the log likelihood without doing any fits and  #
+# prints it to the screen                                   #
+#############################################################
 if args.test_likelihood:
     print("######################################")
     print("# Log Likelihood:", L.loglike_wprior(), "#")
     print("######################################")
     
+#########################
+# Actual sampler called #
+#########################
 else:
-    sys.exit()
     if ch_config_params['use_mpi']==0:
         MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
                                   ch_config_params['burninIterations'], ch_config_params['sampleIterations'])
