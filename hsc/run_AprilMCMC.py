@@ -64,7 +64,7 @@ class April_hsc_Like(BaseLikelihood):
         self.context = ChainContext( self.hsc_core.mapping , self.fit_params[:,0] )
         self.hsc_core(self.context)
         #cl_theory = self.context.get('cl_theory')
-        #print(cl_theory)
+        #print(self.fit_params[:,0])
  
     def loglike_wprior(self):
         #print("call loglike_wprior")
@@ -76,6 +76,7 @@ class April_hsc_Like(BaseLikelihood):
 ###########################################
 parser = argparse.ArgumentParser(description='Calculate HSC clustering cls.')
 parser.add_argument('--path2config', dest='path2config', type=str, help='Path to config file.', required=True)
+parser.add_argument('--test-likelihood', dest='test_likelihood',  help='Prints a likelihood computation without fits', action='store_true')
 args = parser.parse_args()
 logger.info('Read args = {} from command line.'.format(args))
 config = yaml.load(open(args.path2config))
@@ -122,7 +123,7 @@ if cl_params['fitNoise'] == 0:
     if sacc_params['singleBin'] == 1:
         assert sacc_params['binNo'] is not None, 'Single bin fit requested but bin number not specified. Aborting.'
         for s in saccs_noise:
-            s.selectTracer(args.binNo)
+            s.selectTracer(sacc_params['binNo'])
 else:
     saccs_noise = None
 
@@ -134,7 +135,8 @@ if sacc_params['cullCross'] == 1:
 if sacc_params['singleBin'] == 1:
     assert sacc_params['binNo'] is not None, 'Single bin fit requested but bin number not specified. Aborting.'
     for s in saccs:
-        s.selectTracer(args.binNo)
+        s.selectTracer(sacc_params['binNo'])
+        #print( len(s.tracers) )
 
 Ntomo = len(saccs[0].tracers) ## number of tomo bins
 logger.info ("Ntomo bins: %i"%Ntomo)
@@ -194,4 +196,24 @@ else:
 # April Likelihood setup and call #
 ###################################
 L=April_hsc_Like(HSCCoreModule(param_mapping, config['default_params'], cl_params, saccs, noise, HMCorr=HMCorr), HSCLikeModule(saccs), params)
-MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], ch_config_params['burninIterations'], ch_config_params['sampleIterations'], chain_num = ch_config_params['walkersRatio'])
+if args.test_likelihood:
+    print("######################################")
+    print("# Log Likelihood:", L.loglike_wprior(), "#")
+    print("######################################")
+    
+else:
+    sys.exit()
+    if ch_config_params['use_mpi']==0:
+        MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
+                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'])
+    elif ch_config_params['use_mpi']==1:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        print("hello world from rank:", rank)
+        MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
+                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'], chain_num=(rank+1) )
+    else:
+        #p = L.freeParameters()
+        #L.updateParams(p)
+        print("Invalid MPI choice, choose (0 or 1)")
