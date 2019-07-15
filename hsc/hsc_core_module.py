@@ -217,7 +217,7 @@ class HSCCoreModule(object):
                 else:
                     tr_out.append( ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], 
                                                       dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), 
-                                                     bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification'] )
+                                                     bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification']) )
               
             else:
                 raise ValueError("Only \"point\" tracers supported")
