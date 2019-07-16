@@ -195,6 +195,15 @@ else:
 ###################################
 # April Likelihood setup and call #
 ###################################
+if ch_config_params['temp'] is not None:
+    temperature = ch_config_params['temp']
+    if temperature<1.0:
+        print(" Warning! You can't have temperature be less than 1.0")
+        print(" Setting temperature to 1.0 ")
+        temperature = 1.0
+else:
+    temperature = 1.0
+
 L=April_hsc_Like(HSCCoreModule(param_mapping, config['default_params'], cl_params, saccs, noise, HMCorr=HMCorr), HSCLikeModule(saccs), params)
 
 #############################################################
@@ -212,15 +221,21 @@ if args.test_likelihood:
 #########################
 else:
     if ch_config_params['use_mpi']==0:
+        #copy config file to output directory just because I wanted that
+        shutil.copy(args.path2config, ch_config_params['path2output'])
         MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
-                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'])
+                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'] , temp=temperature)
     elif ch_config_params['use_mpi']==1:
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         print("hello world from rank:", rank)
+        if (rank==0):
+            #copy config file to output directory just because I wanted that
+            shutil.copy(args.path2config, ch_config_params['path2output'])
         MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
-                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'], chain_num=(rank+1) )
+                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'], chain_num=(rank+1), \
+                                  temp=temperature)
     else:
         #p = L.freeParameters()
         #L.updateParams(p)
