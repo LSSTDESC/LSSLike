@@ -14,6 +14,7 @@ import yaml
 import lk_max as lk
 from cosmoHammer import ChainContext
 from cosmoHammer.util import Params
+import shutil
 
 import logging
 logging.basicConfig(level=logging.INFO)
