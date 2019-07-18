@@ -15,6 +15,7 @@ import lk_max as lk
 from cosmoHammer import ChainContext
 from cosmoHammer.util import Params
 import shutil
+import time
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -206,7 +207,7 @@ else:
     temperature = 1.0
 
 L=April_hsc_Like(HSCCoreModule(param_mapping, config['default_params'], cl_params, saccs, noise, HMCorr=HMCorr), HSCLikeModule(saccs), params)
-
+start = time.time()
 #############################################################
 # consequence of --test-likelihood argument on command line #
 # calculates the log likelihood without doing any fits and  #
@@ -214,7 +215,7 @@ L=April_hsc_Like(HSCCoreModule(param_mapping, config['default_params'], cl_param
 #############################################################
 if args.test_likelihood:
     print("######################################")
-    print("# Log Likelihood:", L.loglike_wprior(), "#")
+    print("Log Likelihood:", L.loglike_wprior())
     print("######################################")
     
 #########################
@@ -241,3 +242,8 @@ else:
         #p = L.freeParameters()
         #L.updateParams(p)
         print("Invalid MPI choice, choose (0 or 1)")
+        
+print("######################################")
+print("Total Time:", time.time()-start, "sec")
+print("######################################")
+        
