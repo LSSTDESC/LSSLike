@@ -227,9 +227,15 @@ else:
         shutil.copy(args.path2config, ch_config_params['path2output'])
         MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
                                   ch_config_params['burninIterations'], ch_config_params['sampleIterations'] , temp=temperature)
+        
+        print("######################################")
+        print("Total Time:", time.time()-start, "sec")
+        print("######################################")
+            
     elif ch_config_params['use_mpi']==1:
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
+        size = comm.Get_size()
         rank = comm.Get_rank()
         print("hello world from rank:", rank)
         if (rank==0):
@@ -238,12 +244,15 @@ else:
         MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
                                   ch_config_params['burninIterations'], ch_config_params['sampleIterations'], chain_num=(rank+1), \
                                   temp=temperature)
+       
+        if rank is 0:
+            print("######################################")
+            print("Total Time:", time.time()-start, "sec")
+            print("######################################")
+        
     else:
         #p = L.freeParameters()
         #L.updateParams(p)
         print("Invalid MPI choice, choose (0 or 1)")
         
-print("######################################")
-print("Total Time:", time.time()-start, "sec")
-print("######################################")
         
