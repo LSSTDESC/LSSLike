@@ -77,66 +77,19 @@ class HSCCoreModule(object):
 
         cosmo_params = self.get_params(params, 'cosmo')
 
-        # try:
-        if (cosmo_params.viewkeys() & self.mapping.viewkeys()) != set([]):
-            cosmo = ccl.Cosmology(**cosmo_params)
-        else:
-            cosmo = self.cosmo
-        for i, s in enumerate(self.saccs):
-            tracers = self.get_tracers(s, cosmo, params, self.cl_params)
+        try:
+            if (cosmo_params.viewkeys() & self.mapping.viewkeys()) != set([]):
+                cosmo = ccl.Cosmology(**cosmo_params)
+            else:
+                cosmo = self.cosmo
+            for i, s in enumerate(self.saccs):
+                tracers = self.get_tracers(s, cosmo, params, self.cl_params)
 
-            if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
-                dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'])
-                self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
-
-            if self.cl_params['modHOD'] == 'zevol':
-                hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
-                                             self.hodpars.m1f, self.hodpars.alphaf)
-                # Compute HOD Pk
-                if not self.mag_bias:
-                    pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
-                    # pk_hod_arr = np.array([hodprof.pk(self.k_arr, a) for a in self.a_arr])
-                else:
-                    pk_mm_arr = np.array([ccl.halomodel.halomodel_matter_power(cosmo, self.k_arr, a) for a in self.a_arr])
-                    pk_gg_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
-                    pk_gm_arr = np.array([hodprof.pk_gm(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
-
-                # Correct halo model Pk
-                if self.corr_halo_mod:
-                    if not self.mag_bias:
-                        pk_hod_arr *= self.rk_hm
-                    else:
-                        pk_mm_arr *= self.rk_hm
-                        pk_gg_arr *= self.rk_hm
-                        pk_gm_arr *= self.rk_hm
-
-                if not self.mag_bias:
-                    pk_hod_arr = np.log(pk_hod_arr)
-                    pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
-                else:
-                    pk_mm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_mm_arr), is_logp=True)
-                    pk_gg = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gg_arr), is_logp=True)
-                    pk_gm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gm_arr), is_logp=True)
-
-            for i1, i2, _, ells_binned, ndx in s.sortTracers() :
-                lmax_this = int(np.amax(ells_binned))
-                cls = np.zeros(len(self.ells))
-                if self.cl_params['modHOD'] is None:
-                    logger.info('modHOD = {}. Not using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                    cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1))
-
-                elif self.cl_params['modHOD'] == 'zevol':
-                    logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                    if not self.mag_bias:
-                        logger.info('Not including magnification bias in theory predictions.')
-                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
-                    else:
-                        logger.info('Including magnification bias in theory predictions.')
-                        cls[:lmax_this+1] = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), pk_mm, pk_gg, pk_gm)
-
-                elif self.cl_params['modHOD'] == 'bin':
-                    dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'], i1)
+                if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
+                    dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'])
                     self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
+
+                if self.cl_params['modHOD'] == 'zevol':
                     hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
                                                  self.hodpars.m1f, self.hodpars.alphaf)
                     # Compute HOD Pk
@@ -165,43 +118,90 @@ class HSCCoreModule(object):
                         pk_gg = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gg_arr), is_logp=True)
                         pk_gm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gm_arr), is_logp=True)
 
-                    logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                    if not self.mag_bias:
-                        logger.info('Not including magnification bias in theory predictions.')
-                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+                for i1, i2, _, ells_binned, ndx in s.sortTracers() :
+                    lmax_this = int(np.amax(ells_binned))
+                    cls = np.zeros(len(self.ells))
+                    if self.cl_params['modHOD'] is None:
+                        logger.info('modHOD = {}. Not using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
+                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1))
+
+                    elif self.cl_params['modHOD'] == 'zevol':
+                        logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
+                        if not self.mag_bias:
+                            logger.info('Not including magnification bias in theory predictions.')
+                            cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+                        else:
+                            logger.info('Including magnification bias in theory predictions.')
+                            cls[:lmax_this+1] = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), pk_mm, pk_gg, pk_gm)
+
+                    elif self.cl_params['modHOD'] == 'bin':
+                        dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'], i1)
+                        self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
+                        hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
+                                                     self.hodpars.m1f, self.hodpars.alphaf)
+                        # Compute HOD Pk
+                        if not self.mag_bias:
+                            pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                            # pk_hod_arr = np.array([hodprof.pk(self.k_arr, a) for a in self.a_arr])
+                        else:
+                            pk_mm_arr = np.array([ccl.halomodel.halomodel_matter_power(cosmo, self.k_arr, a) for a in self.a_arr])
+                            pk_gg_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                            pk_gm_arr = np.array([hodprof.pk_gm(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+
+                        # Correct halo model Pk
+                        if self.corr_halo_mod:
+                            if not self.mag_bias:
+                                pk_hod_arr *= self.rk_hm
+                            else:
+                                pk_mm_arr *= self.rk_hm
+                                pk_gg_arr *= self.rk_hm
+                                pk_gm_arr *= self.rk_hm
+
+                        if not self.mag_bias:
+                            pk_hod_arr = np.log(pk_hod_arr)
+                            pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
+                        else:
+                            pk_mm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_mm_arr), is_logp=True)
+                            pk_gg = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gg_arr), is_logp=True)
+                            pk_gm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gm_arr), is_logp=True)
+
+                        logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
+                        if not self.mag_bias:
+                            logger.info('Not including magnification bias in theory predictions.')
+                            cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+                        else:
+                            logger.info('Including magnification bias in theory predictions.')
+                            cls[:lmax_this+1] = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), pk_mm, pk_gg, pk_gm)
+
                     else:
-                        logger.info('Including magnification bias in theory predictions.')
-                        cls[:lmax_this+1] = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), pk_mm, pk_gg, pk_gm)
+                        logger.info('Only modHOD options zevol and bin supported.')
+                        raise NotImplementedError()
 
-                else:
-                    logger.info('Only modHOD options zevol and bin supported.')
-                    raise NotImplementedError()
+                    # Extrapolate at high ell
+                    cls_ratio = cls[lmax_this]/cls[lmax_this-1]
+                    if cls_ratio >= 1.:
+                        cls_ratio = 0.999
+                    cls[lmax_this+1:]=cls[lmax_this]*(cls_ratio)**(self.ells[lmax_this+1:]-lmax_this)
 
-                # Extrapolate at high ell
-                cls_ratio = cls[lmax_this]/cls[lmax_this-1]
-                if cls_ratio >= 1.:
-                    cls_ratio = 0.999
-                cls[lmax_this+1:]=cls[lmax_this]*(cls_ratio)**(self.ells[lmax_this+1:]-lmax_this)
+                    cls_conv = np.zeros(ndx.shape[0])
+                    # Convolve with windows
+                    for j in range(ndx.shape[0]):
+                        cls_conv[j] = s.binning.windows[ndx[j]].convolve(cls)
 
-                cls_conv = np.zeros(ndx.shape[0])
-                # Convolve with windows
-                for j in range(ndx.shape[0]):
-                    cls_conv[j] = s.binning.windows[ndx[j]].convolve(cls)
+                    if i1 == i2:
+                        # We have an auto-correlation
+                        if self.cl_params['fitNoise'] == 1:
+                            cls_conv += params['Pw_s%i_bin%i'%(i, i1)]
+                        else:
+                            cls_conv += self.noise[i][i1]
+                    cl_theory[i][ndx] = cls_conv
 
-                if i1 == i2:
-                    # We have an auto-correlation
-                    if self.cl_params['fitNoise'] == 1:
-                        cls_conv += params['Pw_s%i_bin%i'%(i, i1)]
-                    else:
-                        cls_conv += self.noise[i][i1]
-                cl_theory[i][ndx] = cls_conv
+            # Add the theoretical cls to the context
+            ctx.add('cl_theory', cl_theory)
 
-        # Add the theoretical cls to the context
-        ctx.add('cl_theory', cl_theory)
-
-        # except:
-        #     logging.warn('Runtime error caught from CCL. Used params [%s]'%( ', '.join([str(i) for i in p]) ) )
-        #     raise LikelihoodComputationException()
+        except:
+            logging.warn('Runtime error caught from CCL. Used params [%s]'%( ', '.join([str(i) for i in p]) ) )
+            raise LikelihoodComputationException()
 
     def get_params(self, params, paramtype, bin=None):
 
