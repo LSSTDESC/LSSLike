@@ -25,7 +25,10 @@ class HODParams(object):
 
     def lmminf(self, z) :
         #Returns log10(M_min)
-        lmmin = self.params['lmmin_0']*1/(1. + z) + self.params['lmmin_1']
+        if 'lmmin' in self.params:
+            lmmin = self.params['lmmin']*(1. - 1./(1. +z)) + self.params['lmminp']
+        else:
+            lmmin = self.params['lmmin_0']/(1. +z) + self.params['lmmin_1']
         return lmmin
 
     def sigmf(self, z):
@@ -41,7 +44,10 @@ class HODParams(object):
 
     def m1f(self, z) :
         #Returns M_1
-        m1 = self.params['m1_0']*1/(1. + z) + self.params['m1_1']
+        if 'm1' in self.params:
+            m1 = self.params['m1']*(1. - 1./(1. +z)) + self.params['m1p']
+        else:
+            m1 = self.params['m1_0']/(1. +z) + self.params['m1_1']
         if self.islogm1:
             m1 = 10**m1
         return m1
