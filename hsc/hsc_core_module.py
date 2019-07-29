@@ -257,8 +257,6 @@ class HSCCoreModule(object):
                 if 'zshift_bin{}'.format(tr_index) in params:
                     zbins = thistracer.z + params['zshift_bin{}'.format(tr_index)]
 
-                    if self.mag_bias:
-                        mb_z = self.mag_bias_z + params['zshift_bin{}'.format(tr_index)]
                 else:
                     zbins = thistracer.z
 
@@ -270,17 +268,33 @@ class HSCCoreModule(object):
                 else:
                     Nz = thistracer.Nz
 
+                if self.mag_bias:
+                    if 'zshift_bin{}'.format(tr_index) in params:
+                        mb_z = self.mag_bias_z + params['zshift_bin{}'.format(tr_index)]
+                    else:
+                        mb_z = self.mag_bias_z
+
+                    if 'mb_ampl' in params:
+                        mb_s = params['mb_ampl']*self.mag_bias_s
+                    else:
+                        mb_s = self.mag_bias_s
+
                 if not self.mag_bias:
                     tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), \
                                                         bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification']))
                 else:
                     # Setup the galaxy tracer
+                    # In generalized tracers the bias is treated as a transfer function in a
+                    # a needs to be increasing
+                    a_b_arr = 1./(1. + z_b_arr[::-1])
+                    b_b_arr = b_b_arr[::-1]
+
                     g_tracer = ccl.Tracer()
                     g_kernel = ccl.get_density_kernel(cosmo, (zbins[zbins>=0.], Nz[zbins>=0.]))
-                    g_tracer.add_tracer(cosmo=cosmo, kernel=g_kernel)
+                    g_tracer.add_tracer(cosmo=cosmo, kernel=g_kernel, transfer_a=(a_b_arr, b_b_arr))
                     # Setup magnification bias tracer
                     m_tracer = ccl.Tracer()
-                    chis, w = ccl.get_lensing_kernel(cosmo, (zbins[zbins>=0.], Nz[zbins>=0.]), (mb_z[mb_z>=0.], self.mag_bias_s[mb_z>=0.]))
+                    chis, w = ccl.get_lensing_kernel(cosmo, (zbins[zbins>=0.], Nz[zbins>=0.]), (mb_z[mb_z>=0.], mb_s[mb_z>=0.]))
                     m_kernel = (chis, -2*w)
                     m_tracer.add_tracer(cosmo, kernel=m_kernel, der_bessel=-1, der_angles=1)
 
