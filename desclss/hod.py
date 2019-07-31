@@ -199,6 +199,7 @@ class HODProfile(object) :
         rhoM=ccl.rho_x(self.cosmo,a,"matter",is_comoving=True)
         n0_1h=(rhoM-np.sum(hmf*marr)*dlm)/marr[0]
         n0_2h=(rhoM-np.sum(hmf*hbf*marr)*dlm)/marr[0]
+        # n0_2h = (rhoM - np.sum(hmf*hbf*marr)*dlm)
 
         #Number of galaxies
         fc=self.fc_f(z)
