@@ -153,7 +153,7 @@ if cl_params['fitNoise'] == 0:
     if sacc_params['singleBin'] == 1:
         assert sacc_params['binNo'] is not None, 'Single bin fit requested but bin number not specified. Aborting.'
         for s in saccs_noise:
-            s.selectTracer(args.binNo)
+            s.selectTracer(sacc_params['binNo'])
 else:
     saccs_noise = None
 
@@ -165,7 +165,7 @@ if sacc_params['cullCross'] == 1:
 if sacc_params['singleBin'] == 1:
     assert sacc_params['binNo'] is not None, 'Single bin fit requested but bin number not specified. Aborting.'
     for s in saccs:
-        s.selectTracer(args.binNo)
+        s.selectTracer(sacc_params['binNo'])
 
 Ntomo = len(saccs[0].tracers) ## number of tomo bins
 logger.info ("Ntomo bins: %i"%Ntomo)
@@ -177,6 +177,14 @@ for i, s in enumerate(saccs_noise):
     for ii in range(Ntomo):
         binmask = (s.binning.binar['T1']==ii)&(s.binning.binar['T2']==ii)
         noise[i][ii] = s.mean.vector[binmask]
+
+if 'path2cov' in sacc_params.keys():
+    logger.info('Covariance matrix provided. Setting precision matrix of saccs and saccs_noise to provided covariance matrix.')
+    for i in range(len(saccs)):
+        covmat = np.load(sacc_params['path2cov'][i])
+        logger.info('Read covariance matrix from {}.'.format(sacc_params['path2cov'][i]))
+        saccs[i].precision = sacc.Precision(covmat, 'dense', is_covariance=True)
+        saccs_noise[i].precision = sacc.Precision(covmat, 'dense', is_covariance=True)
 
 if cl_params['corrHM'] == 1:
     assert cl_params['modHOD'] is not None, 'Halo model correction requested but not using HOD for theory predictions. Aborting.'
