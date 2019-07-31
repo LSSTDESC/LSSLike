@@ -2,13 +2,12 @@
 # CAREFUL: yaml is super sensitive to spaces - don't use tabs
 saccfiles: ['/home/sssm8d/hsc/HSC_data/global/WIDE_GAMA15H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/hsc/HSC_data/global/WIDE_GAMA09H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/hsc/HSC_data/global/WIDE_WIDE12H_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/hsc/HSC_data/global/WIDE_VVDS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc', '/home/sssm8d/hsc/HSC_data/global/WIDE_XMMLSS_sirius_out/covana_noiana_msksirius_cltheory_wssc_msksyst0_dpj0_dpb_bands1/power_spectra_wdpj.sacc']
 
-
 cl_params:
     fitHOD: 1
     modHOD: zevol
     fitNoise: 0
     corrHM: 1
-    pzMethod: nz_frankenz
+    pzMethod: nz_demp
     bg:
         b_bin0: 1.
         b_bin1: 1.
