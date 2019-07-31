@@ -45,8 +45,6 @@ class HSCCoreModule(object):
             self.HMCorr = None
             
         self.z_c = {}
-        #print(len(self.saccs))
-        #print(self.saccs)
         for isacc, s in enumerate(self.saccs):
             self.z_c[isacc] = {}
             for (tr_index, thistracer) in enumerate(s.tracers) :
@@ -54,7 +52,6 @@ class HSCCoreModule(object):
                     bin_max = thistracer.Nz.max()
                     imax = np.where(thistracer.Nz == bin_max)
                     self.z_c[isacc]['zwidth_bin{}'.format(tr_index)] = thistracer.z[imax[0][0]]
-        #print(self.z_c)
             
         
 
@@ -183,7 +180,6 @@ class HSCCoreModule(object):
         return params_subset
 
     def get_tracers(self, sacc, cosmo, params, cl_params, isacc):
-        #print("get tracers")
         if 'z_b' in params:
             b_b = np.array([params['b_%2.1f'%z] for z in params['z_b']])
 
@@ -203,7 +199,6 @@ class HSCCoreModule(object):
                     raise ValueError("bias needed for each tracer")
    
                 if ('zshift_bin{}'.format(tr_index) in params) and ('zwidth_bin{}'.format(tr_index) in params):
-                    #print("zwidth called")
                     zbins = (thistracer.z-self.z_c[isacc]['zwidth_bin{}'.format(tr_index)])*(1+params['zwidth_bin{}'.format(tr_index)])+ \
                                                 params['zshift_bin{}'.format(tr_index)] + self.z_c[isacc]['zwidth_bin{}'.format(tr_index)]
                     
