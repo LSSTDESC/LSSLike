@@ -74,7 +74,6 @@ class LSSTheory(object):
             self.log.info('Not using HOD for theoretical predictions.')
 
     def get_tracers(self,cosmo,dic_par) :
-        
         tr_out=[]
         has_rsd=dic_par.get('has_rds',False)
         has_magnification=dic_par.get('has_magnification',None)
