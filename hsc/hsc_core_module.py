@@ -57,7 +57,7 @@ class ClInterpolator(object):
         clret[ind_good] = cli(ls[ind_good])
 
         # Extrapolate at high ell
-        cls_ratio = clb[-1]/clb[-2]
+        cls_ratio = np.abs(clb[-1]/clb[-2])
         if cls_ratio >= 1.:
             cls_ratio = 0.999
         clret[ind_bad] = clb[-1]*(cls_ratio)**(ls[ind_bad]-self.ls_eval[-1])
