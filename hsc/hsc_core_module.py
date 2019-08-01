@@ -50,13 +50,18 @@ class ClInterpolator(object):
         """
 
         # Ells in range
-        ind_good=np.where(ls<=self.ls_eval[-1])[0]
-        ind_bad=np.where(ls>self.ls_eval[-1])[0]
-        clret=np.zeros(len(ls))
-        cli=interp1d(self.ls_eval,clb,kind=self.kind,fill_value=0,bounds_error=False)
-        clret[ind_good]=cli(ls[ind_good])
-        ratio=(1-clb[-2]/clb[-1])/self.dlog_ls
-        clret[ind_bad]=clb[-1]*(ls[ind_bad]/self.ls_eval[-1])**ratio
+        ind_good = np.where(ls<=self.ls_eval[-1])[0]
+        ind_bad = np.where(ls>self.ls_eval[-1])[0]
+        clret = np.zeros(len(ls))
+        cli = interp1d(self.ls_eval,clb,kind=self.kind,fill_value=0,bounds_error=False)
+        clret[ind_good] = cli(ls[ind_good])
+
+        # Extrapolate at high ell
+        cls_ratio = clb[-1]/clb[-2]
+        if cls_ratio >= 1.:
+            cls_ratio = 0.999
+        clret[ind_bad] = clb[-1]*(cls_ratio)**(ls[ind_bad]-self.ls_eval[-1])
+
         return clret
 
 class HSCCoreModule(object):
@@ -223,15 +228,12 @@ class HSCCoreModule(object):
                     else:
                         logger.info('Only modHOD options zevol and bin supported.')
                         raise NotImplementedError()
-
                     # Extrapolate at high ell
                     cls = itp.interpolate_and_extrapolate(self.ells, clb)
-
                     cls_conv = np.zeros(ndx.shape[0])
                     # Convolve with windows
                     for j in range(ndx.shape[0]):
                         cls_conv[j] = s.binning.windows[ndx[j]].convolve(cls)
-
                     if i1 == i2:
                         # We have an auto-correlation
                         if self.cl_params['fitNoise'] == 1:
