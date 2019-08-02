@@ -29,15 +29,18 @@ class ClInterpolator(object):
         Once initialized, ClInterpolator.ls_eval holds the multipole values at which the
         power spectra should be estimated.
         """
+
         # Ells below the rannge
-        ls_pre=np.geomspace(2,lb[0],nb_dex_extrap_lo*np.log10(lb[0]/2.))
+        ls_pre=np.geomspace(2, lb[0],nb_dex_extrap_lo*np.log10(lb[0]/2.))
         # Ells in range
         ls_mid=(lb[:-1,None]+(np.arange(nrb)[None,:]*np.diff(lb)[:,None]/nrb)).flatten()[1:]
-        self.ls_eval=np.concatenate((ls_pre,ls_mid,[lb[-1]]))
-        # Derivative for high-ell extrapolation
-        self.dlog_ls=1-self.ls_eval[-2]/self.ls_eval[-1]
+        # Ells above range
+        ls_post = np.geomspace(lb[-1], 2*lb[-1], 50)
+
+        self.ls_eval = np.concatenate((ls_pre, ls_mid, ls_post))
+
         # Interpolation type
-        self.kind=kind
+        self.kind = kind
 
     def interpolate_and_extrapolate(self,ls,clb):
         """Go from a C_ell estimated in a few ells to one estimated in a
@@ -57,10 +60,7 @@ class ClInterpolator(object):
         clret[ind_good] = cli(ls[ind_good])
 
         # Extrapolate at high ell
-        cls_ratio = np.abs(clb[-1]/clb[-2])
-        if cls_ratio >= 1.:
-            cls_ratio = 0.999
-        clret[ind_bad] = clb[-1]*(cls_ratio)**(ls[ind_bad]-self.ls_eval[-1])
+        clret[ind_bad] = clb[-1]*(ls[ind_bad]/self.ls_eval[-1])**-1.05
 
         return clret
 
