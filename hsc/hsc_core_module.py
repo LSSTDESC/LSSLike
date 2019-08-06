@@ -320,10 +320,7 @@ class HSCCoreModule(object):
                     else:
                         mb_z = self.mag_bias_z
 
-                    if 'mb_ampl' in params:
-                        mb_s = params['mb_ampl']*self.mag_bias_s
-                    else:
-                        mb_s = self.mag_bias_s
+                    mb_s = self.mag_bias_s
 
                 if not self.mag_bias:
                     tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), \
@@ -341,7 +338,10 @@ class HSCCoreModule(object):
                     # Setup magnification bias tracer
                     m_tracer = ccl.Tracer()
                     chis, w = ccl.get_lensing_kernel(cosmo, (zbins[zbins>=0.], Nz[zbins>=0.]), (mb_z[mb_z>=0.], mb_s[mb_z>=0.]))
-                    m_kernel = (chis, -2*w)
+                    if 'mb_ampl' in params:
+                        m_kernel = (chis, -2.*params['mb_ampl']*w)
+                    else:
+                        m_kernel = (chis, -2.*w)
                     m_tracer.add_tracer(cosmo, kernel=m_kernel, der_bessel=-1, der_angles=1)
 
                     tr_out.append([g_tracer, m_tracer])
