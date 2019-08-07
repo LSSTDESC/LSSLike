@@ -34,12 +34,12 @@ fit_params:
 #    zshift_bin1: [1, 0.0, -0.2, 0.2, 0.01]
 #    zshift_bin2: [2, 0.0, -0.2, 0.2, 0.01]
 #    zshift_bin3: [3, 0.0, -0.2, 0.2, 0.01]
-    lmmin: [0, 4., -5., 10., 0.5]
-    lmminp: [1, 10., 0., 15., 0.5]
-    m0_0: [2, -2., -5., 10., 0.5]
-    m0_1: [3, 10., 0., 15., 0.5]
-    m1: [4, 7., -5., 10., 0.5]
-    m1p: [5, 10., 0., 15., 0.5]
+    lmminp: [0, 4., -5., 10., 0.5]
+    lmmin: [1, 10., 5., 20., 0.5]
+    m0p: [2, 4., -5., 10., 0.5]
+    m0: [3, 10., 0., 15., 0.5]
+    m1p: [4, 7., -5., 10., 0.5]
+    m1: [5, 10., 5., 20., 0.5]
 
 default_params:
     has_rsd: False
@@ -58,17 +58,18 @@ default_params:
     alpha_1: 0.
     fc_0: 1.
     fc_1: 0.
+    zfid: 0.4
 #    lmmin_0: 0.
 #    m0_0: 0.
 #    m1_0: 0.
 
 # Configuration parameters for april
 ch_config_params:
-    path2output: /astro/u/sskinner/hsc/HSC_analysis/sarah_new2/run_output
-    chainsPrefix: sarah_new2
-    use_mpi: 0
+    path2output: /astro/u/sskinner/hsc/HSC_analysis/sarah_new15/run_output
+    chainsPrefix: sarah_new15
+    use_mpi: 1
     rerun: 0
     walkersRatio: 0
-    burninIterations: 10
-    sampleIterations: 20
-    temp: 1.0
+    burninIterations: 1000
+    sampleIterations: 3000
+    temp: 2.0
