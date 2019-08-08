@@ -49,18 +49,17 @@ class April_hsc_Like(BaseLikelihood):
     def freeParameters(self):
         #print("call freeParameters")
         Parameter_set = []
-        for i, key in enumerate(self.hsc_core.mapping):
+        for k, v in self.hsc_core.mapping.items():
             # bounds ######### low ################## high #########
-            limits = [ self.fit_params[i][1], self.fit_params[i][2] ]
+            limits = [ self.fit_params[v][1], self.fit_params[v][2] ]
             # parameter obj ############## name ###### value ############ error ############### bounds #
-            Parameter_set.append( Parameter(key, self.fit_params[i][0], self.fit_params[i][3], limits) )
+            Parameter_set.append( Parameter(k, self.fit_params[v][0], self.fit_params[v][3], limits) )
         return Parameter_set
 
     def updateParams(self,params):
         #print("call updateParameters")
         m = self.hsc_core.mapping
         for p in params:
-            #print(p.name, p.value)
             self.fit_params[ m[p.name] ][0] = p.value
         self.context = ChainContext( self.hsc_core.mapping , self.fit_params[:,0] )
         self.hsc_core(self.context)
@@ -149,6 +148,14 @@ for i, s in enumerate(saccs_noise):
     for ii in range(Ntomo):
         binmask = (s.binning.binar['T1']==ii)&(s.binning.binar['T2']==ii)
         noise[i][ii] = s.mean.vector[binmask]
+
+if 'path2cov' in sacc_params.keys():
+    logger.info('Covariance matrix provided. Setting precision matrix of saccs and saccs_noise to provided covariance matrix.')
+    for i in range(len(saccs)):
+        covmat = np.load(sacc_params['path2cov'][i])
+        logger.info('Read covariance matrix from {}.'.format(sacc_params['path2cov'][i]))
+        saccs[i].precision = sacc.Precision(covmat, 'dense', is_covariance=True)
+        saccs_noise[i].precision = sacc.Precision(covmat, 'dense', is_covariance=True)
         
 if cl_params['corrHM'] == 1:
     assert cl_params['modHOD'] is not None, 'Halo model correction requested but not using HOD for theory predictions. Aborting.'
