@@ -40,6 +40,7 @@ class HODParams(object):
     def m0f(self, z) :
         # Returns M_0
         if 'zfid' in self.params:
+
             m0 = self.params['m0'] + self.params['m0p']*(1/(1. + z)-(1./(1. + self.params['zfid'])))
         elif 'm0' in self.params:
             m0 = self.params['m0p']*(1. - 1./(1. + z)) + self.params['m0']

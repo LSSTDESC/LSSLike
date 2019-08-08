@@ -68,12 +68,10 @@ class HSCCoreModule(object):
     """
     Core Module for calculating HSC clustering cls.
     """
-
     def __init__(self, PARAM_MAPPING, DEFAULT_PARAMS, cl_params, saccs, noise, HMCorr=None):
         """
         Constructor of the HSCCoreModule
         """
-
         self.mapping = PARAM_MAPPING
         self.constants = DEFAULT_PARAMS
         self.cl_params = cl_params
@@ -95,6 +93,17 @@ class HSCCoreModule(object):
             logger.info('Not correcting halo model.')
             self.corr_halo_mod = False
             self.HMCorr = None
+            
+        self.z_c = {}
+        for isacc, s in enumerate(self.saccs):
+            self.z_c[isacc] = {}
+            for (tr_index, thistracer) in enumerate(s.tracers) :
+                if 'zwidth_bin{}'.format(tr_index) in PARAM_MAPPING:
+                    bin_max = thistracer.Nz.max()
+                    imax = np.where(thistracer.Nz == bin_max)
+                    self.z_c[isacc]['zwidth_bin{}'.format(tr_index)] = thistracer.z[imax[0][0]]
+            
+        
 
         if 'magBias' not in self.cl_params or self.cl_params['magBias'] == 0:
             logger.info('magBias = 0. Not including magnification bias in theory predictions.')
@@ -118,7 +127,7 @@ class HSCCoreModule(object):
         """
         # Get the parameters from the context
         p = ctx.getParams()
-
+        
         params = self.constants.copy()
         for k,v in self.mapping.items():
             params[k] = p[v]
@@ -126,7 +135,7 @@ class HSCCoreModule(object):
         cl_theory = [np.zeros((s.size(),)) for s in self.saccs]
 
         cosmo_params = self.get_params(params, 'cosmo')
-
+        
         try:
             if (cosmo_params.viewkeys() & self.mapping.viewkeys()) != set([]):
                 cosmo = ccl.Cosmology(**cosmo_params)
@@ -134,8 +143,7 @@ class HSCCoreModule(object):
                 cosmo = self.cosmo
 
             for i, s in enumerate(self.saccs):
-                tracers = self.get_tracers(s, cosmo, params, self.cl_params)
-
+                tracers = self.get_tracers(s, cosmo, params, self.cl_params, i)
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
                     dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'])
                     self.hodpars = hod_funcs.HODParams(dic_hodpars, islogm0=True, islogm1=True)
@@ -260,7 +268,8 @@ class HSCCoreModule(object):
                                 'mass_function', 'halo_concentration', 'emulator_neutrinos']
         elif paramtype == 'hod_zevol':
             KEYS = ['lmmin_0', 'lmmin_1', 'sigm_0', 'sigm_1', 'm0_0', 'm0_1', 'm1_0', 'm1_1', \
-                  'alpha_0', 'alpha_1', 'fc_0', 'fc_1', 'lmmin', 'lmminp', 'm0', 'm0p', 'm1', 'm1p', 'zfid']
+                  'alpha_0', 'alpha_1', 'fc_0', 'fc_1', 'lmmin', 'lmminp', 'm1', 'm1p', 'm0', \
+                  'm0p', 'zfid']
         elif paramtype == 'hod_bin':
             assert bin is not None, 'paramtype = {}, but bin number not given. Aborting.'.format(paramtype)
             BIN_KEYS = ['lmmin_0_bin{}'.format(bin), 'sigm_0_bin{}'.format(bin), 'm0_0_bin{}'.format(bin), \
@@ -280,8 +289,7 @@ class HSCCoreModule(object):
 
         return params_subset
 
-    def get_tracers(self, sacc, cosmo, params, cl_params):
-
+    def get_tracers(self, sacc, cosmo, params, cl_params, isacc):
         if 'z_b' in params:
             b_b = np.array([params['b_%2.1f'%z] for z in params['z_b']])
 
@@ -299,8 +307,12 @@ class HSCCoreModule(object):
                     b_b_arr = bf(z_b_arr) #Assuming that tracers have this attribute
                 else:
                     raise ValueError("bias needed for each tracer")
-
-                if 'zshift_bin{}'.format(tr_index) in params:
+   
+                if ('zshift_bin{}'.format(tr_index) in params) and ('zwidth_bin{}'.format(tr_index) in params):
+                    zbins = (thistracer.z-self.z_c[isacc]['zwidth_bin{}'.format(tr_index)])*(1+params['zwidth_bin{}'.format(tr_index)])+ \
+                                                params['zshift_bin{}'.format(tr_index)] + self.z_c[isacc]['zwidth_bin{}'.format(tr_index)]
+                    
+                elif 'zshift_bin{}'.format(tr_index) in params:
                     zbins = thistracer.z + params['zshift_bin{}'.format(tr_index)]
 
                 else:
