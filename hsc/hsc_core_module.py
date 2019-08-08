@@ -14,6 +14,56 @@ logger = logging.getLogger(__name__)
 
 COSMO_PARAM_KEYS = ['Omega_b', 'Omega_k', 'sigma8', 'h', 'n_s', 'Omega_c']
 
+
+class ClInterpolator(object):
+    def __init__(self,lb,nrb=3,nb_dex_extrap_lo=10,kind='cubic'):
+        """Interpolator for angular power spectra
+        lb : central bandpower ells
+        nrb : re-binning factor for ells within the range of the bandpowers
+        nb_dex_extrap_lo : number of ells per decade for ells below the range of the bandpowers
+        kind : interpolation type
+
+        Extrapolation at high ell will be done assuming a power-law behaviour,
+        with a power-law index estimated from the last two elements of the power spectrum.
+
+        Once initialized, ClInterpolator.ls_eval holds the multipole values at which the
+        power spectra should be estimated.
+        """
+
+        # Ells below the rannge
+        ls_pre=np.geomspace(2, lb[0],nb_dex_extrap_lo*np.log10(lb[0]/2.))
+        # Ells in range
+        ls_mid=(lb[:-1,None]+(np.arange(nrb)[None,:]*np.diff(lb)[:,None]/nrb)).flatten()[1:]
+        # Ells above range
+        ls_post = np.geomspace(lb[-1], 2*lb[-1], 50)
+
+        self.ls_eval = np.concatenate((ls_pre, ls_mid, ls_post))
+
+        # Interpolation type
+        self.kind = kind
+
+    def interpolate_and_extrapolate(self,ls,clb):
+        """Go from a C_ell estimated in a few ells to one estimated in a
+        finer grid of ells.
+
+        ls : finer grid of ells
+        clb : power spectra evaluated at self.ls_eval
+
+        returns : power spectrum evaluated at ls
+        """
+
+        # Ells in range
+        ind_good = np.where(ls<=self.ls_eval[-1])[0]
+        ind_bad = np.where(ls>self.ls_eval[-1])[0]
+        clret = np.zeros(len(ls))
+        cli = interp1d(self.ls_eval,clb,kind=self.kind,fill_value=0,bounds_error=False)
+        clret[ind_good] = cli(ls[ind_good])
+
+        # Extrapolate at high ell
+        clret[ind_bad] = clb[-1]*(ls[ind_bad]/self.ls_eval[-1])**-1.05
+
+        return clret
+
 class HSCCoreModule(object):
     """
     Core Module for calculating HSC clustering cls.
@@ -55,6 +105,22 @@ class HSCCoreModule(object):
             
         
 
+        if 'magBias' not in self.cl_params or self.cl_params['magBias'] == 0:
+            logger.info('magBias = 0. Not including magnification bias in theory predictions.')
+            self.mag_bias = False
+        elif self.cl_params['magBias'] == 1:
+            logger.info('magBias = 1. Including magnification bias in theory predictions.')
+            assert 'path2sfunc' in self.cl_params, 'magBias set to 1 but no tabulated s function provided. Aborting.'
+            self.mag_bias = True
+            z, s = np.genfromtxt(self.cl_params['path2sfunc'], unpack=True)
+            self.mag_bias_z = z
+            self.mag_bias_s = s
+            global mag_bias
+            import estimate_mag_bias as mag_bias
+        else:
+            raise NotImplementedError('Only values supported for magBias parameter are magBias = 0, 1. Aborting.')
+
+
     def __call__(self, ctx):
         """
         Compute theoretical prediction for clustering power spectra and store in the context.
@@ -71,10 +137,11 @@ class HSCCoreModule(object):
         cosmo_params = self.get_params(params, 'cosmo')
         
         try:
-            if (cosmo_params.keys() & self.mapping.keys()) != set([]):
+            if (cosmo_params.viewkeys() & self.mapping.viewkeys()) != set([]):
                 cosmo = ccl.Cosmology(**cosmo_params)
             else:
                 cosmo = self.cosmo
+
             for i, s in enumerate(self.saccs):
                 tracers = self.get_tracers(s, cosmo, params, self.cl_params, i)
                 if self.cl_params['fitHOD'] == 1 and self.cl_params['modHOD'] == 'zevol':
@@ -85,23 +152,46 @@ class HSCCoreModule(object):
                     hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
                                                  self.hodpars.m1f, self.hodpars.alphaf)
                     # Compute HOD Pk
-                    pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                    if not self.mag_bias:
+                        pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                        # pk_hod_arr = np.array([hodprof.pk(self.k_arr, a) for a in self.a_arr])
+                    else:
+                        # pk_mm_arr = np.array([ccl.halomodel.halomodel_matter_power(cosmo, self.k_arr, a) for a in self.a_arr])
+                        pk_mm_arr = np.array([ccl.nonlin_matter_power(cosmo, self.k_arr, a) for a in self.a_arr])
+                        pk_gg_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                        pk_gm_arr = np.array([hodprof.pk_gm(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+
                     # Correct halo model Pk
                     if self.corr_halo_mod:
-                        pk_hod_arr *= self.rk_hm
-                    pk_hod_arr = np.log(pk_hod_arr)
-                    pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
+                        if not self.mag_bias:
+                            pk_hod_arr *= self.rk_hm
+                        else:
+                            # pk_mm_arr *= self.rk_hm
+                            pk_gg_arr *= self.rk_hm
+                            pk_gm_arr *= self.rk_hm
+
+                    if not self.mag_bias:
+                        pk_hod_arr = np.log(pk_hod_arr)
+                        pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
+                    else:
+                        pk_mm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_mm_arr), is_logp=True)
+                        pk_gg = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gg_arr), is_logp=True)
+                        pk_gm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gm_arr), is_logp=True)
 
                 for i1, i2, _, ells_binned, ndx in s.sortTracers() :
-                    lmax_this = int(np.amax(ells_binned))
-                    cls = np.zeros(len(self.ells))
+                    itp = ClInterpolator(ells_binned)
                     if self.cl_params['modHOD'] is None:
                         logger.info('modHOD = {}. Not using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1))
+                        clb = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval)
 
                     elif self.cl_params['modHOD'] == 'zevol':
                         logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+                        if not self.mag_bias:
+                            logger.info('Not including magnification bias in theory predictions.')
+                            clb = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, p_of_k_a=pk_hod)
+                        else:
+                            logger.info('Including magnification bias in theory predictions.')
+                            clb = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, pk_mm, pk_gg, pk_gm)
 
                     elif self.cl_params['modHOD'] == 'bin':
                         dic_hodpars = self.get_params(params, 'hod_'+self.cl_params['modHOD'], i1)
@@ -109,30 +199,49 @@ class HSCCoreModule(object):
                         hodprof = hod.HODProfile(cosmo, self.hodpars.lmminf, self.hodpars.sigmf, self.hodpars.fcf, self.hodpars.m0f, \
                                                      self.hodpars.m1f, self.hodpars.alphaf)
                         # Compute HOD Pk
-                        pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                        if not self.mag_bias:
+                            pk_hod_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                            # pk_hod_arr = np.array([hodprof.pk(self.k_arr, a) for a in self.a_arr])
+                        else:
+                            # pk_mm_arr = np.array([ccl.halomodel.halomodel_matter_power(cosmo, self.k_arr, a) for a in self.a_arr])
+                            pk_mm_arr = np.array([ccl.nonlin_matter_power(cosmo, self.k_arr, a) for a in self.a_arr])
+                            pk_gg_arr = np.array([hodprof.pk(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+                            pk_gm_arr = np.array([hodprof.pk_gm(self.k_arr, a, lmmin=8., lmmax=16., nlm=128) for a in self.a_arr])
+
                         # Correct halo model Pk
                         if self.corr_halo_mod:
-                            pk_hod_arr *= self.rk_hm
-                        pk_hod_arr = np.log(pk_hod_arr)
-                        pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
+                            if not self.mag_bias:
+                                pk_hod_arr *= self.rk_hm
+                            else:
+                                # pk_mm_arr *= self.rk_hm
+                                pk_gg_arr *= self.rk_hm
+                                pk_gm_arr *= self.rk_hm
+
+                        if not self.mag_bias:
+                            pk_hod_arr = np.log(pk_hod_arr)
+                            pk_hod = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=pk_hod_arr, is_logp=True)
+                        else:
+                            pk_mm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_mm_arr), is_logp=True)
+                            pk_gg = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gg_arr), is_logp=True)
+                            pk_gm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gm_arr), is_logp=True)
+
                         logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
-                        cls[:lmax_this+1] = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], np.arange(lmax_this+1), p_of_k_a=pk_hod)
+                        if not self.mag_bias:
+                            logger.info('Not including magnification bias in theory predictions.')
+                            clb = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, p_of_k_a=pk_hod)
+                        else:
+                            logger.info('Including magnification bias in theory predictions.')
+                            clb = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, pk_mm, pk_gg, pk_gm)
 
                     else:
                         logger.info('Only modHOD options zevol and bin supported.')
                         raise NotImplementedError()
-
                     # Extrapolate at high ell
-                    cls_ratio = cls[lmax_this]/cls[lmax_this-1]
-                    if cls_ratio >= 1.:
-                        cls_ratio = 0.999
-                    cls[lmax_this+1:]=cls[lmax_this]*(cls_ratio)**(self.ells[lmax_this+1:]-lmax_this)
-
+                    cls = itp.interpolate_and_extrapolate(self.ells, clb)
                     cls_conv = np.zeros(ndx.shape[0])
                     # Convolve with windows
                     for j in range(ndx.shape[0]):
                         cls_conv[j] = s.binning.windows[ndx[j]].convolve(cls)
-
                     if i1 == i2:
                         # We have an auto-correlation
                         if self.cl_params['fitNoise'] == 1:
@@ -205,6 +314,7 @@ class HSCCoreModule(object):
                     
                 elif 'zshift_bin{}'.format(tr_index) in params:
                     zbins = thistracer.z + params['zshift_bin{}'.format(tr_index)]
+
                 else:
                     zbins = thistracer.z
 
@@ -216,8 +326,37 @@ class HSCCoreModule(object):
                 else:
                     Nz = thistracer.Nz
 
-                tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), \
-                                                     bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification']))
+                if self.mag_bias:
+                    if 'zshift_bin{}'.format(tr_index) in params:
+                        mb_z = self.mag_bias_z + params['zshift_bin{}'.format(tr_index)]
+                    else:
+                        mb_z = self.mag_bias_z
+
+                    if 'mb_ampl' in params:
+                        mb_s = params['mb_ampl']*self.mag_bias_s
+                    else:
+                        mb_s = self.mag_bias_s
+
+                if not self.mag_bias:
+                    tr_out.append(ccl.NumberCountsTracer(cosmo, has_rsd=params['has_rsd'], dndz=(zbins[zbins>=0.], Nz[zbins>=0.]), \
+                                                        bias=(z_b_arr, b_b_arr), mag_bias=params['has_magnification']))
+                else:
+                    # Setup the galaxy tracer
+                    # In generalized tracers the bias is treated as a transfer function in a
+                    # a needs to be increasing
+                    a_b_arr = 1./(1. + z_b_arr[::-1])
+                    b_b_arr = b_b_arr[::-1]
+
+                    g_tracer = ccl.Tracer()
+                    g_kernel = ccl.get_density_kernel(cosmo, (zbins[zbins>=0.], Nz[zbins>=0.]))
+                    g_tracer.add_tracer(cosmo=cosmo, kernel=g_kernel, transfer_a=(a_b_arr, b_b_arr))
+                    # Setup magnification bias tracer
+                    m_tracer = ccl.Tracer()
+                    chis, w = ccl.get_lensing_kernel(cosmo, (zbins[zbins>=0.], Nz[zbins>=0.]), (mb_z[mb_z>=0.], mb_s[mb_z>=0.]))
+                    m_kernel = (chis, -2*w)
+                    m_tracer.add_tracer(cosmo, kernel=m_kernel, der_bessel=-1, der_angles=1)
+
+                    tr_out.append([g_tracer, m_tracer])
             else :
                 raise ValueError("Only \"point\" tracers supported")
 
@@ -236,6 +375,7 @@ class HSCCoreModule(object):
             from desclss import hod_funcs_bin as hod_funcs
 
         # Provide a, k grids
+        # self.k_arr = np.logspace(-4.3, 3, 1000)
         self.k_arr = np.logspace(-4.3, 1.5, 256)
         self.z_arr = np.linspace(0., 3., 50)[::-1]
         self.a_arr = 1./(1. + self.z_arr)

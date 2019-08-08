@@ -74,3 +74,28 @@ def s(cosmo, z, mlim):
 
     return s
 
+def angular_cl(cosmo, tracer1, tracer2, ells, pk_mm, pk_gg, pk_gm):
+    """
+    Compute angular cl including magnification bias with the generalized tracer framework of CCL.
+    :param cosmo: CCL cosmology object
+    :param tracer1: list of [g_tracer, m_tracer] for tracer 1
+    :param tracer2: list of [g_tracer, m_tracer] for tracer 2
+    :param ells: angular multipole range to compute cls
+    :param pk_mm: 3D matter power spectrum computed using halo model
+    :param pk_gg: 3D galaxy power spectrum computed using HOD
+    :param pk_gm: 3D galaxy-matter cross power spectrum computed using halo model and HOD
+    :return cl: spherical harmonic power spectrum with magnification bias for ells
+    """
+
+    g_tracer1, m_tracer1 = tracer1
+    g_tracer2, m_tracer2 = tracer2
+
+    cl_gg = ccl.angular_cl(cosmo, g_tracer1, g_tracer2, ells, p_of_k_a=pk_gg)
+    cl_mm = ccl.angular_cl(cosmo, m_tracer1, m_tracer2, ells, p_of_k_a=pk_mm)
+    cl_gm = ccl.angular_cl(cosmo, g_tracer1, m_tracer2, ells, p_of_k_a=pk_gm)
+    cl_mg = ccl.angular_cl(cosmo, m_tracer1, g_tracer2, ells, p_of_k_a=pk_gm)
+
+    cl = cl_gg + cl_gm + cl_mg + cl_mm
+
+    return cl
+

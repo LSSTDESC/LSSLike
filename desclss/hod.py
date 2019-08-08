@@ -178,3 +178,58 @@ class HODProfile(object) :
             return p1h+p2h,p1h,p2h,np.ones_like(k)/ng,b_hod
         else :
             return p1h+p2h
+
+    def pk_gm(self,k,a,lmmin=6.,lmmax=17.,nlm=256,return_decomposed=False) :
+        """
+        Returns galaxy-matter power spectrum at a single scale-factor a for array of wave vectors k.
+        :param k: wave vector array
+        :param a: single scale factor value
+        :param lmmin: Mmin for HOD integrals
+        :param lmmax: Mmax for HOD integrals
+        :param nlm: sampling rate for mass integral
+        :param return_decomposed: boolean tag, if True return 1h, 2h power spectrum separately
+        :return:
+        """
+
+        z = 1./a - 1.
+        marr=np.logspace(lmmin,lmmax,nlm); dlm=np.log10(marr[1]/marr[0])
+        u_nfw=self.u_sat(z,marr,k)
+        hmf=ccl.massfunc(self.cosmo,marr,a);
+        hbf=ccl.halo_bias(self.cosmo,marr,a);
+        rhoM=ccl.rho_x(self.cosmo,a,"matter",is_comoving=True)
+        n0_1h=(rhoM-np.sum(hmf*marr)*dlm)/marr[0]
+        n0_2h=(rhoM-np.sum(hmf*hbf*marr)*dlm)/marr[0]
+        # n0_2h = (rhoM - np.sum(hmf*hbf*marr)*dlm)
+
+        #Number of galaxies
+        fc=self.fc_f(z)
+        ngm=self.n_tot(z,marr)
+        ncm=self.n_cent(z,marr)
+        nsm=self.n_sat(z,marr)
+
+        #Number density
+        ng=np.sum(hmf*ngm)*dlm+n0_1h*ngm[0]
+        if ng<=1E-16 : #Make sure we won't divide by 0
+            return None
+
+        #Bias
+        b_hod=np.sum((hmf*hbf*ncm)[None,:]*(fc+nsm[None,:]*u_nfw[:,:]),axis=1)*dlm \
+              + n0_2h*ncm[0]*(fc+nsm[0]*u_nfw[:,0])
+        b_m = np.sum((hmf*hbf)[None,:]*marr[None,:]*u_nfw[:,:],axis=1)*dlm + n0_2h*u_nfw[:,0]
+
+        b_hod/=ng
+        b_m /= rhoM
+
+        #1-halo
+        #p1h=np.sum((hmf*ncm**2)[None,:]*(fc+nsm[None,:]*u_s[:,:])**2,axis=1)*dlm+n0_1h*(ncm[0]*(fc+nsm[0]*u_s[:,0]))**2
+        p1h=np.sum((hmf*ncm)[None,:]*(fc+nsm[None,:]*u_nfw[:,:])*marr*u_nfw[:,:],axis=1)*dlm \
+            + n0_1h*ncm[0]*(fc + nsm[0]*u_nfw[:,0])*u_nfw[:,0]
+        p1h/=ng*rhoM
+
+        #2-halo
+        p2h=b_hod*b_m*ccl.linear_matter_power(self.cosmo,k,a)
+
+        if return_decomposed :
+            return p1h+p2h,p1h,p2h,np.ones_like(k)/ng,b_hod
+        else :
+            return p1h+p2h
