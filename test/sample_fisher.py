@@ -2,12 +2,13 @@
 import sys
 import numpy as np
 import sacc
+sys.path.append('/users/boryanah/repos/LSSLike/desclss/')
 from desclss import LSSTheory
 import copy
 
 #Simulation to use
 if len(sys.argv)!=2 :
-    print "Usage ./sample_emcee.py sim_file"
+    print("Usage ./sample_emcee.py sim_file")
     exit(1)
 sim_file=sys.argv[1]
 
