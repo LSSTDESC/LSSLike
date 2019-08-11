@@ -43,7 +43,7 @@ class MCMCAnalyzer:
         else:
             self.composite = False
 
-        if (cov == None):
+        if (cov is None):
             # make initial cov matrix from diagonal "errors"
             errs = [0.01*p.error**2 for p in self.cpars]
             self.init_pcov(diag(errs))
