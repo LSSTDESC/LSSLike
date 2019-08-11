@@ -203,7 +203,7 @@ else:
 ###################################
 # April Likelihood setup and call #
 ###################################
-if ch_config_params['temp'] is not None:
+if 'temp' in ch_config_params.keys():
     temperature = ch_config_params['temp']
     if temperature<1.0:
         print(" Warning! You can't have temperature be less than 1.0")
@@ -211,6 +211,11 @@ if ch_config_params['temp'] is not None:
         temperature = 1.0
 else:
     temperature = 1.0
+
+if 'path2propCov' in ch_config_params.keys():
+    prop_cov = np.load(ch_config_params['path2propCov'])
+else:
+    prop_cov = None
 
 L=April_hsc_Like(HSCCoreModule(param_mapping, config['default_params'], cl_params, saccs, noise, HMCorr=HMCorr), HSCLikeModule(saccs), params)
 
@@ -232,7 +237,8 @@ else:
         #copy config file to output directory just because I wanted that
         shutil.copy(args.path2config, ch_config_params['path2output'])
         MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
-                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'] , temp=temperature)
+                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'], \
+                                  temp=temperature, cov=prop_cov)
     elif ch_config_params['use_mpi']==1:
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
@@ -242,8 +248,8 @@ else:
             #copy config file to output directory just because I wanted that
             shutil.copy(args.path2config, ch_config_params['path2output'])
         MCMCAnalyzer.MCMCAnalyzer(L,ch_config_params['path2output']+'/'+ch_config_params['chainsPrefix'], \
-                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'], chain_num=(rank+1), \
-                                  temp=temperature)
+                                  ch_config_params['burninIterations'], ch_config_params['sampleIterations'], \
+                                  chain_num=(rank+1), temp=temperature, cov=prop_cov)
     else:
         #p = L.freeParameters()
         #L.updateParams(p)
