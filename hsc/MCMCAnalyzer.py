@@ -75,7 +75,8 @@ class MCMCAnalyzer:
         print("Starting chain...")
 
         while not (self.done):
-            ppars = self.GetProposal()
+            ppars, numout = self.GetProposal()
+            self.cw += numout  ## things hitting outside the prior are formally rejected samples
             self.like.updateParams(ppars)
             ploglike, ploglikes = self.getLikes()
             if (isnan(ploglike)):
@@ -98,6 +99,7 @@ class MCMCAnalyzer:
 
     def GetProposal(self):
         vec = zeros(self.N)
+        numreject=0
         while True:
             ppars = copy.deepcopy(self.cpars)
             step = self.draw_pcov()
@@ -107,7 +109,8 @@ class MCMCAnalyzer:
                 vec[i] = p.value
 
             if all(vec > self.minvals) and all(vec < self.maxvals):
-                return ppars
+                return ppars, numreject
+            numreject+=1
 
     def init_pcov(self, mat):
         self.chol = la.cholesky(mat)
