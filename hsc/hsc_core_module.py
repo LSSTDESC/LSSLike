@@ -278,6 +278,11 @@ class HSCCoreModule(object):
                             cls_conv += self.noise[i][i1]
                     cl_theory[i][ndx] = cls_conv
 
+            # Include star contamination
+            if 'fstar' in self.cl_params.keys():
+                logger.info('Applying multiplicative fstar correction.')
+                cl_theory *= self.cl_params['fstar']
+
             # Add the theoretical cls to the context
             ctx.add('cl_theory', cl_theory)
 

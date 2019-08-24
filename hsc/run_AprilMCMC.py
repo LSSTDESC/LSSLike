@@ -48,12 +48,12 @@ class April_hsc_Like(BaseLikelihood):
     
     def freeParameters(self):
         #print("call freeParameters")
-        Parameter_set = []
+        Parameter_set = [0 for i in range(self.fit_params.shape[0])]
         for k, v in self.hsc_core.mapping.items():
             # bounds ######### low ################## high #########
             limits = [ self.fit_params[v][1], self.fit_params[v][2] ]
             # parameter obj ############## name ###### value ############ error ############### bounds #
-            Parameter_set.append( Parameter(k, self.fit_params[v][0], self.fit_params[v][3], limits) )
+            Parameter_set[v] = Parameter(k, self.fit_params[v][0], self.fit_params[v][3], limits)
         return Parameter_set
 
     def updateParams(self,params):
