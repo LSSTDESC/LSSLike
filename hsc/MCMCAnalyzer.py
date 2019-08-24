@@ -48,6 +48,7 @@ class MCMCAnalyzer:
             errs = [0.01*p.error**2 for p in self.cpars]
             self.init_pcov(diag(errs))
         else:
+            print('Initializing with provided proposal covariance matrix.')
             self.init_pcov(cov)
 
         self.RunChain()

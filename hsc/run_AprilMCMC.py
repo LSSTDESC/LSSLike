@@ -213,6 +213,7 @@ else:
     temperature = 1.0
 
 if 'path2propCov' in ch_config_params.keys():
+    logger.info('path2propCov provided. Reading {}.'.format(ch_config_params['path2propCov']))
     prop_cov = np.load(ch_config_params['path2propCov'])
 else:
     prop_cov = None
