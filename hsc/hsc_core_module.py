@@ -281,7 +281,8 @@ class HSCCoreModule(object):
             # Include star contamination
             if 'fstar' in self.cl_params.keys():
                 logger.info('Applying multiplicative fstar correction.')
-                cl_theory *= self.cl_params['fstar']
+                for i in range(len(self.saccs)):
+                    cl_theory[i] /= self.cl_params['fstar']
 
             # Add the theoretical cls to the context
             ctx.add('cl_theory', cl_theory)
