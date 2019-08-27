@@ -39,15 +39,21 @@ class HODParams(object):
 
     def m0f(self, z) :
         # Returns M_0
-        if 'zfid' in self.params:
+        if 'm0' in self.params or 'm0_0' in self.params:
+            if 'zfid' in self.params:
+                m0 = self.params['m0'] + self.params['m0p']*(1/(1. + z)-(1./(1. + self.params['zfid'])))
+            elif 'm0' in self.params:
+                m0 = self.params['m0p']*(1. - 1./(1. + z)) + self.params['m0']
+            else:
+                m0 = self.params['m0_0']*z + self.params['m0_1']
+            if self.islogm0:
+                m0 = 10**m0
 
-            m0 = self.params['m0'] + self.params['m0p']*(1/(1. + z)-(1./(1. + self.params['zfid'])))
-        elif 'm0' in self.params:
-            m0 = self.params['m0p']*(1. - 1./(1. + z)) + self.params['m0']
         else:
-            m0 = self.params['m0_0']*z + self.params['m0_1']
-        if self.islogm0:
+            print('Setting M0 to Mmin.')
+            m0 = self.lmminf(z)
             m0 = 10**m0
+
         return m0
 
     def m1f(self, z) :
