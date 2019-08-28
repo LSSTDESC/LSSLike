@@ -242,7 +242,13 @@ else:
     else:
         logger.info('Galaxy bias model = const.')
 
+if 'temperature' in ch_config_params.keys():
+    logger.info('temperature = {}. Supplying likelihood with temperature.'.format(ch_config_params['temperature']))
+    temperature = ch_config_params['temperature']
 
+else:
+    logger.info('No temperature provided. Supplying likelihood with no temperature.')
+    temperature = None
        
 # Set up CosmoHammer
 
@@ -252,7 +258,7 @@ chain = LikelihoodComputationChain(
 
 chain.addCoreModule(HSCCoreModule(param_mapping, config['default_params'], cl_params, saccs, noise, HMCorr=HMCorr))
 
-chain.addLikelihoodModule(HSCLikeModule(saccs))
+chain.addLikelihoodModule(HSCLikeModule(saccs, temperature))
 
 
 chain.setup()

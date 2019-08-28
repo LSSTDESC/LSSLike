@@ -13,12 +13,23 @@ class HSCLikeModule(object):
     Dummy object for calculating a likelihood
     """
 
-    def __init__(self, saccs):
+    def __init__(self, saccs, temperature=None):
         """
         Constructor of the HSCLikeModule
         """
 
         self.saccs = saccs
+
+        if temperature is not None:
+            logger.info('temperature = {}. Scaling all log-likelihoods by temperature.'.format(temperature))
+            self.apply_temperature = True
+            self.temperature = temperature
+
+        else:
+            logger.info('No temperature provided. Running unscaled log-likelihoods.')
+            self.apply_temperature = False
+            self.temperature = None
+
 
     def computeLikelihood(self, ctx):
         """
@@ -35,6 +46,9 @@ class HSCLikeModule(object):
             pmatrix = s.precision.getPrecisionMatrix()
             lnprob += np.einsum('i,ij,j',delta, pmatrix, delta)
         lnprob *= -0.5
+
+        if self.apply_temperature:
+            lnprob /= self.temperature
 
         # Return the likelihood
         return lnprob
