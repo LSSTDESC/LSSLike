@@ -207,7 +207,7 @@ if cl_params['corrHM'] == 1:
             FID_COSMO_PARAMS[key] = config['default_params'][key]
     else:
         assert 'fid_cosmo_params' in cl_params, 'Halo model correction requested but no fiducial cosmological model provided. Aborting.'
-        FID_COSMO_PARAMS = config['fid_cosmo_params']
+        FID_COSMO_PARAMS = cl_params['fid_cosmo_params']
 
     logger.info('Setting up halo model correction with fixed cosmological parameters set to {}.'.format(FID_COSMO_PARAMS))
     cosmo = ccl.Cosmology(**FID_COSMO_PARAMS)
