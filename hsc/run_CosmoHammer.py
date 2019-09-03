@@ -176,7 +176,7 @@ if sacc_params['singleBin'] == 1:
 else:
     if 'fitBins' in sacc_params.keys():
         logger.info('Only fitting bins = {}.'.format(sacc_params['fitBins']))
-        for s in saccs_noise:
+        for s in saccs:
             s.selectTracers(sacc_params['fitBins'])
 
 Ntomo = len(saccs[0].tracers) ## number of tomo bins
