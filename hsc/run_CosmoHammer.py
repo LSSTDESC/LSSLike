@@ -27,7 +27,7 @@ BIAS_PARAM_BZ_KEYS = ['b_0.0', 'b_0.5', 'b_1.0', 'b_2.0', 'b_4.0']
 z_b = np.array([0.0, 0.5, 1.0, 2.0, 4.0])
 BIAS_PARAM_CONST_KEYS = ['b_bin0', 'b_bin1', 'b_bin2', 'b_bin3']
 
-def cutLranges(saccs, lmin, lmax, kmax, zeff, cosmo, Ntomo, saccs_noise=None):
+def cutLranges(saccs, lmin, lmax, kmax, cosmo, Ntomo, zeff=None, saccs_noise=None):
     # lmax as a function of sample
     if lmax=='auto':
         if Ntomo==1:
@@ -41,7 +41,17 @@ def cutLranges(saccs, lmin, lmax, kmax, zeff, cosmo, Ntomo, saccs_noise=None):
 
     elif lmax == 'kmax':
         assert kmax is not None, 'kmax not provided.'
-        assert zeff is not None, 'zeff array not provided.'
+
+        if zeff is None:
+            logger.info('zeff not provided. Computing directly from sacc.')
+            zeff = np.zeros(Ntomo)
+            for i, t in enumerate(saccs[0].tracers):
+                zeff[i] = t.meanZ()
+            logger.info('zeff = {}.'.format(zeff))
+
+        else:
+            logger.info('zeff provided. Setting zeff to zeff = {}.'.format(zeff))
+
         assert Ntomo == zeff.shape[0], 'zeff shape does not match number of tomographic bins.'
         logger.info('Computing lmax according to specified kmax = {}.'.format(kmax))
 
@@ -182,7 +192,7 @@ else:
 Ntomo = len(saccs[0].tracers) ## number of tomo bins
 logger.info ("Ntomo bins: %i"%Ntomo)
 
-saccs, saccs_noise = cutLranges(saccs, sacc_params['lmin'], sacc_params['lmax'], sacc_params['kmax'], Z_EFF, cosmo=None, Ntomo=Ntomo, saccs_noise=saccs_noise)
+saccs, saccs_noise = cutLranges(saccs, sacc_params['lmin'], sacc_params['lmax'], sacc_params['kmax'], cosmo=None, Ntomo=Ntomo, saccs_noise=saccs_noise)
 
 noise = [[0 for i in range(Ntomo)] for ii in range(len(saccs_noise))]
 for i, s in enumerate(saccs_noise):

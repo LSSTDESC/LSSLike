@@ -166,6 +166,9 @@ class HODProfile(object) :
         b_hod=np.sum((hmf*hbf*ncm)[None,:]*(fc+nsm[None,:]*u_s[:,:]),axis=1)*dlm+n0_2h*ncm[0]*(fc+nsm[0]*u_s[:,0])
         b_hod/=ng
 
+        M_h = np.sum((hmf*marr*ncm)[None,:]*(fc+nsm[None,:]*u_s[:,:]),axis=1)*dlm
+        M_h /= ng
+
         #1-halo
         #p1h=np.sum((hmf*ncm**2)[None,:]*(fc+nsm[None,:]*u_s[:,:])**2,axis=1)*dlm+n0_1h*(ncm[0]*(fc+nsm[0]*u_s[:,0]))**2
         p1h=np.sum((hmf*ncm)[None,:]*(2*fc*nsm[None,:]*u_s[:,:]+(nsm[None,:]*u_s[:,:])**2),axis=1)*dlm+n0_1h*ncm[0]*(2*fc*nsm[0]*u_s[:,0]+(nsm[0]*u_s[:,0])**2)
@@ -175,7 +178,7 @@ class HODProfile(object) :
         p2h=b_hod**2*ccl.linear_matter_power(self.cosmo,k,a)
 
         if return_decomposed :
-            return p1h+p2h,p1h,p2h,np.ones_like(k)/ng,b_hod
+            return p1h+p2h,p1h,p2h,np.ones_like(k)/ng,b_hod, M_h
         else :
             return p1h+p2h
 
