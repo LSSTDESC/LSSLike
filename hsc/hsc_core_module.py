@@ -361,11 +361,7 @@ class HSCCoreModule(object):
                     Nz = thistracer.Nz
 
                 if self.mag_bias:
-                    if 'zshift_bin{}'.format(tr_index) in params:
-                        mb_z = self.mag_bias_z + params['zshift_bin{}'.format(tr_index)]
-                    else:
-                        mb_z = self.mag_bias_z
-
+                    mb_z = self.mag_bias_z
                     mb_s = self.mag_bias_s
 
                 if not self.mag_bias:
