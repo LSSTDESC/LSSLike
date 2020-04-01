@@ -19,7 +19,7 @@ class HODParams(object):
         self.params = hodpars
         self.islogm0 = islogm0
         self.islogm1 = islogm1
-        print('Parameters updated: hodpars = {}.'.format(hodpars))
+        #print('Parameters updated: hodpars = {}.'.format(hodpars))
 
         return
 

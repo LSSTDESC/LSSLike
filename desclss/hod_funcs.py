@@ -21,7 +21,7 @@ class HODParams(object):
             self.params['m0_0'] = 10**self.params['m0_0']
         if islogm1:
             self.params['m1_0'] = 10**self.params['m1_0']
-        print('Parameters updated: hodpars = {}.'.format(hodpars))
+        #print('Parameters updated: hodpars = {}.'.format(hodpars))
 
         return
 

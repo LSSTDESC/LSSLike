@@ -89,7 +89,7 @@ class HODProfile(object) :
         self.alpha_f=alpha_f
         self.delta_mass=delta_mass
         self.is_delta_matter=is_delta_matter
-        print('HODProfile called with {}.'.format(cosmo))
+        #print('HODProfile called with {}.'.format(cosmo))
 
     def n_cent(self,z,m) :
         """

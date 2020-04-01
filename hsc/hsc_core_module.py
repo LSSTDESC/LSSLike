@@ -149,11 +149,16 @@ class HSCCoreModule(object):
 
 
     def __call__(self, ctx):
+        p = ctx.getParams()
+        cl_theory = self.compute_theory(p)
+        # Add the theoretical cls to the context
+        ctx.add('cl_theory', cl_theory)
+
+    def compute_theory(self, p):
         """
         Compute theoretical prediction for clustering power spectra and store in the context.
         """
         # Get the parameters from the context
-        p = ctx.getParams()
         
         params = self.constants.copy()
         for k,v in self.mapping.items():
@@ -164,7 +169,7 @@ class HSCCoreModule(object):
         cosmo_params = self.get_params(params, 'cosmo')
         
         try:
-            if (cosmo_params.viewkeys() & self.mapping.viewkeys()) != set([]):
+            if (cosmo_params.keys() & self.mapping.keys()) != set([]):
                 cosmo = ccl.Cosmology(**cosmo_params)
             else:
                 cosmo = self.cosmo
@@ -209,16 +214,16 @@ class HSCCoreModule(object):
                     itp = ClInterpolator(ells_binned, self.lmax)
 
                     if self.cl_params['modHOD'] is None:
-                        logger.info('modHOD = {}. Not using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
+                        #logger.info('modHOD = {}. Not using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
                         clb = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval)
 
                     elif self.cl_params['modHOD'] == 'zevol':
-                        logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
+                        #logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
                         if not self.mag_bias:
-                            logger.info('Not including magnification bias in theory predictions.')
+                            #logger.info('Not including magnification bias in theory predictions.')
                             clb = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, p_of_k_a=pk_hod)
                         else:
-                            logger.info('Including magnification bias in theory predictions.')
+                            #logger.info('Including magnification bias in theory predictions.')
                             clb = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, pk_mm, pk_gg, pk_gm)
 
                     elif self.cl_params['modHOD'] == 'bin':
@@ -253,16 +258,16 @@ class HSCCoreModule(object):
                             pk_gg = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gg_arr), is_logp=True)
                             pk_gm = ccl.Pk2D(a_arr=self.a_arr, lk_arr=np.log(self.k_arr), pk_arr=np.log(pk_gm_arr), is_logp=True)
 
-                        logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
+                        #logger.info('modHOD = {}. Using HOD to compute theory predictions.'.format(self.cl_params['modHOD']))
                         if not self.mag_bias:
-                            logger.info('Not including magnification bias in theory predictions.')
+                            #logger.info('Not including magnification bias in theory predictions.')
                             clb = ccl.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, p_of_k_a=pk_hod)
                         else:
-                            logger.info('Including magnification bias in theory predictions.')
+                            #logger.info('Including magnification bias in theory predictions.')
                             clb = mag_bias.angular_cl(cosmo, tracers[i1], tracers[i2], itp.ls_eval, pk_mm, pk_gg, pk_gm)
 
                     else:
-                        logger.info('Only modHOD options zevol and bin supported.')
+                        #logger.info('Only modHOD options zevol and bin supported.')
                         raise NotImplementedError()
                     # Extrapolate at high ell
                     cls = itp.interpolate_and_extrapolate(self.ells, clb)
@@ -280,12 +285,11 @@ class HSCCoreModule(object):
 
             # Include star contamination
             if 'fstar' in self.cl_params.keys():
-                logger.info('Applying multiplicative fstar correction.')
+                #logger.info('Applying multiplicative fstar correction.')
                 for i in range(len(self.saccs)):
                     cl_theory[i] /= self.cl_params['fstar']
 
-            # Add the theoretical cls to the context
-            ctx.add('cl_theory', cl_theory)
+            return cl_theory
 
         except:
             logging.warn('Runtime error caught from CCL. Used params [%s]'%( ', '.join([str(i) for i in p]) ) )

@@ -142,7 +142,7 @@ class LSSTheory(object):
                                 matter_power_spectrum=dic_par['matter_power_spectrum'],
                                 mass_function=dic_par['mass_function'])
 
-        self.log.info('CCL called with cosmology = {}.'.format(cosmo))
+        #self.log.info('CCL called with cosmology = {}.'.format(cosmo))
 
         return cosmo
 

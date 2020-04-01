@@ -31,14 +31,10 @@ class HSCLikeModule(object):
             self.temperature = None
 
 
-    def computeLikelihood(self, ctx):
+    def computeLikelihoodFromCl(self, cl_theory):
         """
         Computes the likelihood using information from the context
         """
-        # Get information from the context. This can be results from a core
-        # module or the parameters coming from the sampler
-        cl_theory = ctx.get('cl_theory')
-
         # Calculate a likelihood up to normalization
         lnprob = 0.
         for i, s in enumerate(self.saccs):
@@ -51,7 +47,17 @@ class HSCLikeModule(object):
             lnprob /= self.temperature
 
         # Return the likelihood
+        print(" <><> Likelihood evaluated")
         return lnprob
+
+    def computeLikelihood(self, ctx):
+        """
+        Computes the likelihood using information from the context
+        """
+        # Get information from the context. This can be results from a core
+        # module or the parameters coming from the sampler
+        cl_theory = ctx.get('cl_theory')
+        return self.computeLikelihoodFromCl(cl_theory)
 
     def setup(self):
         """
