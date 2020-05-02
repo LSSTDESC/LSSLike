@@ -47,7 +47,7 @@ class HSCLikeModule(object):
             lnprob /= self.temperature
 
         # Return the likelihood
-        print(" <><> Likelihood evaluated")
+        print(" <><> Likelihood evaluated, lnprob = ",lnprob)
         return lnprob
 
     def computeLikelihood(self, ctx):

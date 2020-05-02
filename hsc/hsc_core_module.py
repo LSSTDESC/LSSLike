@@ -49,7 +49,7 @@ class ClInterpolator(object):
         self.kind = kind
 
         # Ells below the rannge
-        ls_pre=np.geomspace(2, lb[0], nb_dex_extrap_lo*np.log10(lb[0]/2.))
+        ls_pre=np.geomspace(2, lb[0], int(nb_dex_extrap_lo*np.log10(lb[0]/2.)))
         # Ells in range
         ls_mid=(lb[:-1, None]+(np.arange(nrb)[None,:]*np.diff(lb)[:,None]/nrb)).flatten()[1:]
 
