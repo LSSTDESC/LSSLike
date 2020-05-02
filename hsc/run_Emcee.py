@@ -287,13 +287,21 @@ else:
     nwalkers = nparams * ch_config_params['walkersRatio']
 
     nsteps = ch_config_params['burninIterations'] + ch_config_params['sampleIterations']
-    p_initial = params[:, 0] + np.random.normal(size=(nwalkers, nparams)) * params[:, 3][None, :]
 
+    if ch_config_params['rerun']:
+        old_chains = np.loadtxt(fname_out)
+        p_initial = old_chains[-nwalkers:,:]
+    else:
+        p_initial = params[:, 0] + np.random.normal(size=(nwalkers, nparams)) * params[:, 3][None, :]
+    
     sampler = emcee.EnsembleSampler(nwalkers, nparams, lnprob, pool=pool_use)
     start = time.time()
     print("Running %d samples" % nsteps)
     sampler.run_mcmc(p_initial, nsteps)
     end = time.time()
-    np.savetxt(fname_out, sampler.chain.reshape([nwalkers * nsteps, -1]))
+    if ch_config_params['rerun']:
+        np.savetxt(prefix_chain+"_rerun.txt", sampler.chain.reshape([nwalkers * nsteps, -1]))
+    else:
+        np.savetxt(fname_out, sampler.chain.reshape([nwalkers * nsteps, -1]))
     pool.close()
     print("Took ",(end - start)," seconds")
