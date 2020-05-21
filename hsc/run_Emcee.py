@@ -26,6 +26,45 @@ BIAS_PARAM_BZ_KEYS = ['b_0.0', 'b_0.5', 'b_1.0', 'b_2.0', 'b_4.0']
 z_b = np.array([0.0, 0.5, 1.0, 2.0, 4.0])
 BIAS_PARAM_CONST_KEYS = ['b_bin0', 'b_bin1', 'b_bin2', 'b_bin3']
 
+
+class SampleFileUtil(object):
+    """Util for handling sample files.
+    Copied from Andrina's code.
+
+    :param filePrefix: the prefix to use
+    :param reuseBurnin: True if the burn in data from a previous run should be used
+    """
+    def __init__(self, filePrefix, carry_on=False):
+        self.filePrefix = filePrefix
+        if carry_on:
+            mode = 'a'
+        else:
+            mode = 'w'
+        self.samplesFile = open(self.filePrefix + '.txt', mode)
+        self.probFile = open(self.filePrefix + 'prob.txt', mode)
+
+    def persistSamplingValues(self, pos, prob):
+        self.persistValues(self.samplesFile, self.probFile, pos, prob)
+
+    def persistValues(self, posFile, probFile, pos, prob):
+        """Writes the walker positions and the likelihood to the disk
+        """
+        posFile.write("\n".join(["\t".join([str(q) for q in p]) for p in pos]))
+        posFile.write("\n")
+        posFile.flush()
+
+        probFile.write("\n".join([str(p) for p in prob]))
+        probFile.write("\n")
+        probFile.flush();
+
+    def close(self):
+        self.samplesFile.close()
+        self.probFile.close()
+
+    def __str__(self, *args, **kwargs):
+        return "SampleFileUtil"
+
+
 def cutLranges(saccs, kmax, cosmo, Ntomo, zeff=None, saccs_noise=None):
     logger.info('zeff not provided. Computing directly from sacc.')
     zeff = np.zeros(Ntomo)
@@ -281,27 +320,35 @@ else:
         pool.wait()
         sys.exit(0)
 
-    prefix_chain = os.path.join(ch_config_params['path2output'],
-                                ch_config_params['chainsPrefix'])
-    fname_out = prefix_chain + '.txt'
     nwalkers = nparams * ch_config_params['walkersRatio']
-
     nsteps = ch_config_params['burninIterations'] + ch_config_params['sampleIterations']
 
-    if ch_config_params['rerun']:
-        old_chains = np.loadtxt(fname_out)
-        p_initial = old_chains[-nwalkers:,:]
-    else:
+    prefix_chain = os.path.join(ch_config_params['path2output'],
+                                ch_config_params['chainsPrefix'])
+    found_file = os.path.isfile(prefix_chain+'.txt')
+
+    if (not found_file) or (not ch_config_params['rerun']):
         p_initial = params[:, 0] + np.random.normal(size=(nwalkers, nparams)) * params[:, 3][None, :]
-    
+        nsteps_use = nsteps
+    else:
+        print("Restarting from a previous run")
+        old_chain = np.loadtxt(prefix_chain+'.txt')
+        p_initial = old_chains[-nwalkers:,:]
+        nsteps_use = max(nsteps-len(old_chain) // nwalkers, 0)
+
+    chain_file = SampleFileUtil(prefix_chain, carry_on=ch_config_params['rerun'])
     sampler = emcee.EnsembleSampler(nwalkers, nparams, lnprob, pool=pool_use)
     start = time.time()
-    print("Running %d samples" % nsteps)
-    sampler.run_mcmc(p_initial, nsteps)
-    end = time.time()
-    if ch_config_params['rerun']:
-        np.savetxt(prefix_chain+"_rerun.txt", sampler.chain.reshape([nwalkers * nsteps, -1]))
-    else:
-        np.savetxt(fname_out, sampler.chain.reshape([nwalkers * nsteps, -1]))
+    print("Running %d samples" % nsteps_use)
+    count = 1
+    for pos, prob, _ in sampler.sample(p_initial, iterations=nsteps_use):
+        if pool.is_master():
+            print('Iteration done. Persisting.')
+            chain_file.persistSamplingValues(pos, prob)
+
+            if counter % 10:
+                print(f"Finished sample {counter}")
+        counter += 1
+
     pool.close()
     print("Took ",(end - start)," seconds")
