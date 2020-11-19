@@ -5,39 +5,38 @@ from scipy.interpolate import interp1d
 
 class LSSTheory(object):
 
-    def __init__(self,sacc):
-        if  type(sacc)==str:
-            sacc=sacc.SACC.loadFromHDF(sacc)
-        self.s=sacc
-        if self.s.binning==None :
-            raise ValueError("Binning needed!")
+    def __init__(self, sacc_in):
+        if  type(sacc_in) == str:
+            self.s = sacc.Sacc.load_fits(sacc_in)
+        #if self.s.binning==None :
+        #    raise ValueError("Binning needed!")
 
-    def get_tracers(self,cosmo,dic_par) :
-        tr_out=[]
-        has_rsd=dic_par.get('has_rds',False)
-        has_magnification=dic_par.get('has_magnification',False)
-        for (tr_index, thistracer) in enumerate(self.s.tracers) :
-            if thistracer.type.__contains__('point'):
-                try:
-                    z_b_arr=dic_par[thistracer.exp_sample+'_z_b']
-                    b_b_arr=dic_par[thistracer.exp_sample+'_b_b']
-                except:
-                    raise ValueError("bias needed for each tracer")
+    def get_tracers(self, cosmo, dic_par) :
+        tr_out = {}
+        has_rsd = dic_par.get('has_rsd', False)
+        has_magnification = dic_par.get('has_magnification', False)
 
-                if 'zshift_bin' + str(tr_index) in dic_par:
-                    zbins = thistracer.z + dic_par['zshift_bin' + str(tr_index)]
-                else:
-                    zbins = thistracer.z                
-                bf=interp1d(z_b_arr,b_b_arr,kind='nearest') #Assuming linear interpolation. Decide on extrapolation.
-                b_arr=bf(thistracer.z) #Assuming that tracers have this attribute
-                tr_out.append(ccl.ClTracerNumberCounts(cosmo, dic_par['has_rsd'],dic_par['has_magnification'],
-                                                       z = thistracer.z, n=(zbins, thistracer.Nz), bias = (z_b_arr, b_b_arr)))
-            else :
-                raise ValueError("Only \"point\" tracers supported")
+        for (tr_index, key) in enumerate(self.s.tracers) :
+            thistracer = self.s.tracers[key]
+            try:
+                b_b_arr = dic_par['gals_b_b'][tr_index]
+            except:
+                raise ValueError("bias needed for each tracer")
+
+            if 'zshift_bin' + str(tr_index) in dic_par:
+                zbins = thistracer.z + dic_par['zshift_bin' + str(tr_index)]
+            else:
+                zbins = thistracer.z
+
+            tr_out[key] = ccl.NumberCountsTracer(cosmo=cosmo, has_rsd=has_rsd, #has_magnification,
+                                                 dndz=(zbins, thistracer.nz), bias=(zbins, b_b_arr * np.ones_like(zbins))
+                                                )
         return tr_out
 
-    def get_cosmo(self,dic_par) :
-        Omega_c = dic_par.get('Omega_c',0.255)
+    def get_cosmo(self, dic_par):
+        # get the parameter values from the input dictionary
+        # if the key isn't assume, assume the value specified here
+        Omega_c = dic_par.get('Omega_c', 0.255)
         Omega_b = dic_par.get('Omega_b', 0.045)
         Omega_k = dic_par.get('Omega_k', 0.0)
         mnu = dic_par.get('mnu', 0.06)
@@ -51,28 +50,29 @@ class LSSTheory(object):
             raise ValueError("Specifying both sigma8 and A_s: pick one")
         elif has_A_s:
             A_s = dic_par['A_s']
-            params=ccl.Parameters(Omega_c=Omega_c,Omega_b=Omega_b,Omega_k=Omega_k,
-                                  w0=w,wa=wa,A_s=A_s,n_s=n_s,h=h0)
-
+            sigma8 = None
         else:
-            sigma8=dic_par.get('sigma_8',0.8)
-            params=ccl.Parameters(Omega_c=Omega_c,Omega_b=Omega_b,Omega_k=Omega_k,
-                                  w0=w,wa=wa,sigma8=sigma8,n_s=n_s,h=h0)
+            A_s = None
+            sigma8 = dic_par.get('sigma_8', 0.8)
 
-        transfer_function=dic_par.get('transfer_function','boltzmann_class')
-        matter_power_spectrum=dic_par.get('matter_power_spectrum','halofit')
-        cosmo=ccl.Cosmology(params, transfer_function=dic_par['transfer_function'],
-                                matter_power_spectrum=dic_par['matter_power_spectrum'])
+        transfer_function = dic_par.get('transfer_function', 'boltzmann_class')
+        matter_power_spectrum = dic_par.get('matter_power_spectrum', 'halofit')
+        # set up the ccl object
+        cosmo = ccl.Cosmology(Omega_c=Omega_c, Omega_b=Omega_b, Omega_k=Omega_k,
+                              w0=w, wa=wa, A_s=A_s, n_s=n_s, h=h0, sigma8=sigma8,
+                              transfer_function=transfer_function,
+                              matter_power_spectrum=matter_power_spectrum)
         return cosmo
 
-    def get_prediction(self,dic_par) :
-        theory_out=np.zeros((self.s.size(),))
-        cosmo=self.get_cosmo(dic_par)
-        tr=self.get_tracers(cosmo,dic_par)
-        for i1,i2,_,ells,ndx in self.s.sortTracers() :
-            cls=ccl.angular_cl(cosmo,tr[i1],tr[i2],ells)
-            if (i1==i2) and ('Pw_bin%i'%i1 in dic_par):
-                cls+=dic_par['Pw_bin%i'%i1]
-            theory_out[ndx]=cls
-            
-        return theory_out    
+    def get_prediction(self, dic_par):
+        theory_out = np.zeros((len(self.s.get_data_points()),))
+        cosmo = self.get_cosmo(dic_par)
+        tr = self.get_tracers(cosmo, dic_par)
+
+        for tr1, tr2 in self.s.get_tracer_combinations():
+            ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
+            ndx = self.s.indices(sacc.standard_types.galaxy_density_cl, (tr1, tr2))
+            c_ells = ccl.angular_cl(cosmo=cosmo, cltracer1=tr[tr1], cltracer2=tr[tr2], ell=ells)
+            theory_out[ndx] = c_ells
+
+        return theory_out
