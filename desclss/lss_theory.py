@@ -5,9 +5,10 @@ from scipy.interpolate import interp1d
 
 class LSSTheory(object):
 
-    def __init__(self, sacc_in):
+    def __init__(self, sacc_in, interp=False):
         if  type(sacc_in) == str:
             self.s = sacc.Sacc.load_fits(sacc_in)
+        self.interp = interp
         #if self.s.binning==None :
         #    raise ValueError("Binning needed!")
 
@@ -71,8 +72,18 @@ class LSSTheory(object):
 
         for tr1, tr2 in self.s.get_tracer_combinations():
             ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
+            if self.interp:
+                # use reduced-ell spacing to get the theory prediction
+                # and then interpolate to get the cls for ells needed
+                ells_fast = np.unique(np.geomspace(0.1, max(ells)+1).astype(np.int))
+                c_ells_fast = ccl.angular_cl(cosmo, tr[tr1], tr[tr2], ells_fast)
+                cls_spline = interp1d(ells_fast, c_ells_fast, kind='cubic')
+                c_ells = cls_spline(ells)
+            else:
+                c_ells = ccl.angular_cl(cosmo=cosmo, cltracer1=tr[tr1], cltracer2=tr[tr2], ell=ells)
+
+            # save the cells for return
             ndx = self.s.indices(sacc.standard_types.galaxy_density_cl, (tr1, tr2))
-            c_ells = ccl.angular_cl(cosmo=cosmo, cltracer1=tr[tr1], cltracer2=tr[tr2], ell=ells)
             theory_out[ndx] = c_ells
 
         return theory_out
