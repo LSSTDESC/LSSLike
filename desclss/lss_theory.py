@@ -5,12 +5,19 @@ from scipy.interpolate import interp1d
 
 class LSSTheory(object):
 
-    def __init__(self, sacc_in, interp=False):
+    def __init__(self, sacc_in, interp=False, lmax=None):
         if  type(sacc_in) == str:
             self.s = sacc.Sacc.load_fits(sacc_in)
         self.interp = interp
-        #if self.s.binning==None :
-        #    raise ValueError("Binning needed!")
+        # set up ells
+        tr1, tr2 = self.s.get_tracer_combinations()[0]
+        self.ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
+        # set up for interpolation
+        if self.interp:
+            if lmax is None:
+                lmax = max(self.ells)
+            # set up sparser ells
+            self.ells_fast = np.unique(np.geomspace(0.1, lmax+1).astype(np.int))
 
     def get_tracers(self, cosmo, dic_par) :
         tr_out = {}
@@ -71,16 +78,16 @@ class LSSTheory(object):
         tr = self.get_tracers(cosmo, dic_par)
 
         for tr1, tr2 in self.s.get_tracer_combinations():
-            ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
+            #ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
             if self.interp:
                 # use reduced-ell spacing to get the theory prediction
                 # and then interpolate to get the cls for ells needed
-                ells_fast = np.unique(np.geomspace(0.1, max(ells)+1).astype(np.int))
-                c_ells_fast = ccl.angular_cl(cosmo, tr[tr1], tr[tr2], ells_fast)
-                cls_spline = interp1d(ells_fast, c_ells_fast, kind='cubic')
-                c_ells = cls_spline(ells)
+                #ells_fast = np.unique(np.geomspace(0.1, max(ells)+1).astype(np.int))
+                c_ells_fast = ccl.angular_cl(cosmo, tr[tr1], tr[tr2], self.ells_fast)
+                cls_spline = interp1d(self.ells_fast, c_ells_fast, kind='cubic')
+                c_ells = cls_spline(self.ells)
             else:
-                c_ells = ccl.angular_cl(cosmo=cosmo, cltracer1=tr[tr1], cltracer2=tr[tr2], ell=ells)
+                c_ells = ccl.angular_cl(cosmo=cosmo, cltracer1=tr[tr1], cltracer2=tr[tr2], ell=self.ells)
 
             # save the cells for return
             ndx = self.s.indices(sacc.standard_types.galaxy_density_cl, (tr1, tr2))
