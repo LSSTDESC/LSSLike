@@ -35,6 +35,7 @@ class LSSTheory(object):
         for (tr_index, key) in enumerate(self.s.tracers) :
             thistracer = self.s.tracers[key]
             try:
+                z_b_arr = dic_par['gals_z_b'][tr_index]
                 b_b_arr = dic_par['gals_b_b'][tr_index]
             except:
                 raise ValueError("bias needed for each tracer")
@@ -44,8 +45,16 @@ class LSSTheory(object):
             else:
                 zbins = thistracer.z
 
+            if not isinstance(z_b_arr, float) and (len(z_b_arr) == len(zbins)):
+                # i.e. input bias is for all z
+                bias = b_b_arr
+            else:
+                # contruct the bias array
+                bias = b_b_arr * np.ones_like(zbins)   # <-- this will affect results since it ignores bias evolution.
+
+            # construct the tracer object
             tr_out[key] = ccl.NumberCountsTracer(cosmo=cosmo, has_rsd=has_rsd, #has_magnification,
-                                                 dndz=(zbins, thistracer.nz), bias=(zbins, b_b_arr * np.ones_like(zbins))
+                                                 dndz=(zbins, thistracer.nz), bias=(zbins, bias)
                                                 )
         return tr_out
 
