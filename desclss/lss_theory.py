@@ -6,6 +6,20 @@ from scipy.interpolate import interp1d
 class LSSTheory(object):
 
     def __init__(self, sacc_in, interp=False, lmax=None):
+        """
+
+        Required Inputs
+        ---------------
+        * sacc_in: sacc object to use to set up the theory.
+
+        Optional Inputs
+        ---------------
+        * interp: bool: set to True to interpolate the predictions/
+                        Default: False
+        * lmax: None or int: maximum ell to consider when interpolating.
+                             Default: None
+
+        """
         if  type(sacc_in) == str:
             self.s = sacc.Sacc.load_fits(sacc_in)
         self.interp = interp
@@ -40,12 +54,16 @@ class LSSTheory(object):
             except:
                 raise ValueError("bias needed for each tracer")
 
+            # get the zbins array
             if 'zshift_bin' + str(tr_index) in dic_par:
                 zbins = thistracer.z + dic_par['zshift_bin' + str(tr_index)]
             else:
                 zbins = thistracer.z
 
+            # set up the bias array to pass to CCL
             if not isinstance(z_b_arr, float) and (len(z_b_arr) == len(zbins)):
+                if np.any(z_b_arr != zbins):
+                    raise ValueError('something isnt right: z_b_arr should match the z_arr for dndz.')
                 # i.e. input bias is for all z
                 bias = b_b_arr
             else:
