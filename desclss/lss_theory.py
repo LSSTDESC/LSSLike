@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 
 class LSSTheory(object):
 
-    def __init__(self, sacc_in, interp=False, lmax=None):
+    def __init__(self, sacc_in, interp=False, lmax=None, ells_to_interp=None):
         """
 
         Required Inputs
@@ -31,7 +31,10 @@ class LSSTheory(object):
             if lmax is None:
                 lmax = max(self.ells)
             # set up sparser ells
-            self.ells_fast = np.unique(np.geomspace(0.1, lmax+1).astype(np.int))
+            if ells_to_interp is None:
+                self.ells_fast = np.unique(np.geomspace(0.1, lmax+1).astype(np.int))
+            else:
+                self.ells_fast = ells_to_interp
             # create the new ells to eval
             self.ells_to_eval = np.arange(lmax)
             # nells
