@@ -61,15 +61,17 @@ class LSSTheory(object):
             zbins = thistracer.z
 
             # set up the bias array to pass to CCL
+            # first check data type for z-array for bias and the bias array
             if not isinstance(z_b_arr, float) and (len(z_b_arr) == len(zbins)):
                 if np.any(z_b_arr != zbins):
                     raise ValueError('something isnt right: z_b_arr should match the z_arr for dndz.')
                 # i.e. input bias is for all z
                 bias = b_b_arr
             else:
+                # dont want to interpolate or ignore bias evolution (unless explicitly inputted)
+                raise ValueError('please include full bias array as intended.')
                 # contruct the bias array
-                bias = b_b_arr * np.ones_like(zbins)   # <-- this will affect results since it ignores bias evolution.
-
+                #bias = b_b_arr * np.ones_like(zbins)   # <-- this will affect results since it ignores bias evolution.
             # construct the tracer object
             tr_out[key] = ccl.NumberCountsTracer(cosmo=cosmo, has_rsd=has_rsd, #has_magnification,
                                                  dndz=(zbins, thistracer.nz), bias=(zbins, bias)
