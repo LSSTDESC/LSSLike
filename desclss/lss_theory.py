@@ -14,7 +14,7 @@ class LSSTheory(object):
 
         Optional Inputs
         ---------------
-        * interp: bool: set to True to interpolate the predictions/
+        * interp: bool: set to True to interpolate the predictions.
                         Default: False
         * lmax: None or int: maximum ell to consider when interpolating.
                              Default: None
@@ -58,10 +58,7 @@ class LSSTheory(object):
                 raise ValueError("bias needed for each tracer")
 
             # get the zbins array
-            if 'zshift_bin' + str(tr_index) in dic_par:
-                zbins = thistracer.z + dic_par['zshift_bin' + str(tr_index)]
-            else:
-                zbins = thistracer.z
+            zbins = thistracer.z
 
             # set up the bias array to pass to CCL
             if not isinstance(z_b_arr, float) and (len(z_b_arr) == len(zbins)):
@@ -118,11 +115,9 @@ class LSSTheory(object):
         for i in range(self.nzbins):
             for j in range(self.nzbins):
                 tr1, tr2 = 'bin_%s' % i, 'bin_%s' % j
-                #ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
                 if self.interp:
                     # use reduced-ell spacing to get the theory prediction
                     # and then interpolate to get the cls for ells needed
-                    #ells_fast = np.unique(np.geomspace(0.1, max(ells)+1).astype(np.int))
                     c_ells_fast = ccl.angular_cl(cosmo, tr[tr1], tr[tr2], self.ells_fast)
                     cls_spline = interp1d(self.ells_fast, c_ells_fast, kind='cubic')
                     c_ells = cls_spline(self.ells_to_eval)
