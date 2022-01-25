@@ -5,7 +5,8 @@ from scipy.interpolate import interp1d
 
 class LSSTheory(object):
 
-    def __init__(self, sacc_in, interp=False, lmax=None, ells_to_interp=None):
+    def __init__(self, sacc_in, interp=False, lmax=None, ells_to_interp=None,
+                 lmax_clipping=True, ell_inds_to_keep=None):
         """
 
         Required Inputs
@@ -22,12 +23,20 @@ class LSSTheory(object):
         """
         if  type(sacc_in) == str:
             self.s = sacc.Sacc.load_fits(sacc_in)
+        if lmax_clipping and ell_inds_to_keep is None:
+            raise ValueError('must specify ell_inds_to_keep to implement lmax-clipping.')
         self.interp = interp
+        self.lmax_clipping = lmax_clipping
+        self.ell_inds_to_keep = ell_inds_to_keep
+
         # set up ells
         tr1, tr2 = self.s.get_tracer_combinations()[0]
         self.ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
         # set up for interpolation
         if self.interp:
+            if self.lmax_clipping:
+                raise ValueError('ell-interpolation is not tested for lmax-clipping.')
+
             if lmax is None:
                 lmax = max(self.ells)
             # set up sparser ells
@@ -110,11 +119,12 @@ class LSSTheory(object):
         return cosmo
 
     def get_prediction(self, dic_par):
-        theory_out = np.zeros((self.nzbins, self.nzbins, self.nells))
+        theory_out = {}
         cosmo = self.get_cosmo(dic_par)
         tr = self.get_tracers(cosmo, dic_par)
 
         for i in range(self.nzbins):
+            theory_out[i] = {}
             for j in range(self.nzbins):
                 tr1, tr2 = 'bin_%s' % i, 'bin_%s' % j
                 if self.interp:
@@ -125,6 +135,8 @@ class LSSTheory(object):
                     c_ells = cls_spline(self.ells_to_eval)
                 else:
                     c_ells = ccl.angular_cl(cosmo=cosmo, cltracer1=tr[tr1], cltracer2=tr[tr2], ell=self.ells)
+                    if self.lmax_clipping:
+                        c_ells = c_ells[self.ell_inds_to_keep[i][j]]
 
                 # save the cells for return
                 theory_out[i][j] = c_ells
