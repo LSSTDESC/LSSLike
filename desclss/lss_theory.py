@@ -5,21 +5,40 @@ from scipy.interpolate import interp1d
 
 class LSSTheory(object):
 
-    def __init__(self, sacc_in, interp=False, lmax=None, ells_to_interp=None,
+    def __init__(self, sacc_in,
+                 interp=False, lmax_interp=None, ells_to_interp=None, ells_to_eval=None,
                  lmax_clipping=True, ell_inds_to_keep=None):
         """
 
         Required Inputs
         ---------------
-        * sacc_in: sacc object to use to set up the theory.
+        * sacc_in: sacc object to use to set up theory.
 
         Optional Inputs
         ---------------
         * interp: bool: set to True to interpolate the predictions.
                         Default: False
-        * lmax: None or int: maximum ell to consider when interpolating.
-                             Default: None
-
+        * lmax_interp: None or int: maximum ell to consider when interpolating.
+                                    Default: None
+        * ells_to_interp: None or arr: array of ells to interpolate on.
+                                       If interp is True and ells_to_interp is False,
+                                       ells_to_interp would be evenly spaced on
+                                       a log scale (using np.geomspace) between 0 and lmax.
+                                       Default: None
+        * ells_to_eval: arr: array of ells to evaluate for output when interpolating.
+                             If None, np.arange(lmax_interp) will be used.
+                             Default: none
+        * lmax_clipping: bool: set to True to handle lmax_clipping.
+                               Default: True
+        * ell_inds_to_keep: arr: indices to keep when implementing lmax-clipping.
+                                 These are essentially used to return only the
+                                 selected ells, instead of all ells (based on the
+                                 input sacc file - which is assumed to not have
+                                 lmax clipping)
+                                 Note: another option for lmax clipping would be
+                                 to have theory-sacc-in have lmax clipping already,
+                                 and then we'll pull the clipped ells for each tracer
+                                 combination. May be something to implement in the future.
         """
         if  type(sacc_in) == str:
             self.s = sacc.Sacc.load_fits(sacc_in)
@@ -37,17 +56,20 @@ class LSSTheory(object):
             if self.lmax_clipping:
                 raise ValueError('ell-interpolation is not tested for lmax-clipping.')
 
-            if lmax is None:
-                lmax = max(self.ells)
+            if lmax_interp is None:
+                lmax_interp = max(self.ells)
             # set up sparser ells
             if ells_to_interp is None:
-                self.ells_fast = np.unique(np.geomspace(0.1, lmax+1).astype(np.int))
+                self.ells_fast = np.unique(np.geomspace(0.1, lmax_interp+1).astype(np.int))
             else:
                 self.ells_fast = ells_to_interp
-            # create the new ells to eval
-            self.ells_to_eval = np.arange(lmax)
+            # set up ells to evaluate
+            if ells_to_eval is None:
+                self.ells_to_eval = np.arange(lmax_interp)
+            else:
+                self.ells_to_eval = ells_to_eval
             # nells
-            self.nells = lmax
+            self.nells = len(self.ells_to_eval)
         else:
             self.nells = len(self.ells)
         # number of zbins
