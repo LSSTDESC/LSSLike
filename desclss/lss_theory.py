@@ -5,20 +5,21 @@ from scipy.interpolate import interp1d
 
 class LSSTheory(object):
 
-    def __init__(self, sacc_in,
-                 interp=False, lmax_interp=None, ells_to_interp=None, ells_to_eval=None,
-                 lmax_clipping=True, ell_inds_to_keep=None):
+    def __init__(self, sacc_in, interp=False,
+                 lmax_interp=None, ells_to_interp=None, ells_to_eval=None):
         """
 
         Required Inputs
         ---------------
-        * sacc_in: sacc object to use to set up theory.
+        * sacc_in: sacc object to use to set up theory -- ASSUMING that each
+                   ls/cls for all tracers are binned the same (i.e. no lmax clipping.).
 
         Optional Inputs
         ---------------
         * interp: bool: set to True to interpolate the predictions.
                         Default: False
         * lmax_interp: None or int: maximum ell to consider when interpolating.
+                                    If None, lmax would be max(ells) in the sacc file.
                                     Default: None
         * ells_to_interp: None or arr: array of ells to interpolate on.
                                        If interp is True and ells_to_interp is False,
@@ -27,35 +28,28 @@ class LSSTheory(object):
                                        Default: None
         * ells_to_eval: arr: array of ells to evaluate for output when interpolating.
                              If None, np.arange(lmax_interp) will be used.
-                             Default: none
-        * lmax_clipping: bool: set to True to handle lmax_clipping.
-                               Default: True
-        * ell_inds_to_keep: arr: indices to keep when implementing lmax-clipping.
-                                 These are essentially used to return only the
-                                 selected ells, instead of all ells (based on the
-                                 input sacc file - which is assumed to not have
-                                 lmax clipping)
-                                 Note: another option for lmax clipping would be
-                                 to have theory-sacc-in have lmax clipping already,
-                                 and then we'll pull the clipped ells for each tracer
-                                 combination. May be something to implement in the future.
+                             Default: None
+                             (Note: nmt needs ell_binning for 1 to windowed -- so if
+                             the output would be windowed, leave ells_to_eval to be None)
         """
         if  type(sacc_in) == str:
             self.s = sacc.Sacc.load_fits(sacc_in)
-        if lmax_clipping and ell_inds_to_keep is None:
-            raise ValueError('must specify ell_inds_to_keep to implement lmax-clipping.')
         self.interp = interp
-        self.lmax_clipping = lmax_clipping
-        self.ell_inds_to_keep = ell_inds_to_keep
 
         # set up ells
-        tr1, tr2 = self.s.get_tracer_combinations()[0]
-        self.ells, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
+        # first check to make sure that all cls/cls in the sacc file are binned the same.
+        for i, tr1, tr2 in enumerate(self.s.get_tracer_combinations()):
+            if i == 0:
+                ells_base, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
+            else:
+                ells_here, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)[0]
+                if ells_base != ells_here:
+                    raise ValueError(f'expect all tracers to be binned the same: have {ells_base} + '
+                                     f'{ells_base}'
+                                     )
+        self.ells = ells_base
         # set up for interpolation
         if self.interp:
-            if self.lmax_clipping:
-                raise ValueError('ell-interpolation is not tested for lmax-clipping.')
-
             if lmax_interp is None:
                 lmax_interp = max(self.ells)
             # set up sparser ells
@@ -157,8 +151,6 @@ class LSSTheory(object):
                     c_ells = cls_spline(self.ells_to_eval)
                 else:
                     c_ells = ccl.angular_cl(cosmo=cosmo, cltracer1=tr[tr1], cltracer2=tr[tr2], ell=self.ells)
-                    if self.lmax_clipping:
-                        c_ells = c_ells[self.ell_inds_to_keep[i][j]]
 
                 # save the cells for return
                 theory_out[i][j] = c_ells
