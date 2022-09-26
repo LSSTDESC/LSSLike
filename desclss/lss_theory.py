@@ -38,14 +38,16 @@ class LSSTheory(object):
 
         # set up ells
         # first check to make sure that all cls/cls in the sacc file are binned the same.
-        for i, tr1, tr2 in enumerate(self.s.get_tracer_combinations()):
+        for i, pair in enumerate(self.s.get_tracer_combinations()):
+            tr1, tr2 = pair
             if i == 0:
-                ells_base, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)
+                ells_base = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)[0]
             else:
-                ells_here, _ = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)[0]
-                if ells_base != ells_here:
-                    raise ValueError(f'expect all tracers to be binned the same: have {ells_base} + '
-                                     f'{ells_base}'
+                ells_here = self.s.get_ell_cl(sacc.standard_types.galaxy_density_cl, tr1, tr2)[0]
+                if np.any(ells_base != ells_here):
+                    raise ValueError(f'expect all tracers to be binned the same: have ' +
+                                     f'ell_base = {ells_base} vs ' +
+                                     f'ells_here = {ells_here} ; tr1, tr2 = {pair}'
                                      )
         self.ells = ells_base
         # set up for interpolation
