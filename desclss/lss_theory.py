@@ -99,9 +99,19 @@ class LSSTheory(object):
                 raise ValueError('please include full bias array as intended.')
                 # contruct the bias array
                 #bias = b_b_arr * np.ones_like(zbins)   # <-- this will affect results since it ignores bias evolution.
+
+            # see what dndz to use
+            if 'zarr_dndz' in dic_par:
+                # this means that the zbins/dndz array is changed from original
+                zbins_dndz = dic_par['zarr_dndz'][key]
+                dndz = dic_par['dndz'][key]
+            else:
+                zbins_dndz = zbins
+                dndz = thistracer.nz
             # construct the tracer object
             tr_out[key] = ccl.NumberCountsTracer(cosmo=cosmo, has_rsd=has_rsd, #has_magnification,
-                                                 dndz=(zbins, thistracer.nz), bias=(zbins, bias)
+                                                 dndz=(zbins_dndz, dndz),
+                                                 bias=(zbins, bias)
                                                 )
         return tr_out
 
