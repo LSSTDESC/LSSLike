@@ -103,8 +103,8 @@ class LSSTheory(object):
             # see what dndz to use
             if 'zarr_dndz' in dic_par:
                 # this means that the zbins/dndz array is changed from original
-                zbins_dndz = dic_par['zarr_dndz'][key]
-                dndz = dic_par['dndz'][key]
+                zbins_dndz = dic_par['zarr_dndz'][tr_index]
+                dndz = dic_par['dndz'][tr_index]
             else:
                 zbins_dndz = zbins
                 dndz = thistracer.nz
